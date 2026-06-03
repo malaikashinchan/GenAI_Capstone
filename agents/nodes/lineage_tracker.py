@@ -22,7 +22,8 @@ def run(state: AgentState) -> AgentState:
     logger.info(f"LINEAGE_TRACKER | Starting | dataset={dataset} | run_id={run_id}")
 
     try:
-        raw_table       = f"RAW_OLIST_{dataset.upper()}"
+        from agents.nodes.profile import DATASET_TABLE_MAP
+        raw_table       = DATASET_TABLE_MAP.get(dataset, f"RAW_{dataset.upper()}")
         silver_clean    = f"SILVER_{dataset.upper()}_CLEAN"
         silver_masked   = f"SILVER_{dataset.upper()}_MASKED"
         bronze_quarant  = f"BRONZE_{dataset.upper()}_QUARANTINE"

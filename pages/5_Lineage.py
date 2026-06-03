@@ -34,9 +34,13 @@ st.markdown("### 🗺️ Table-Level Lineage")
 raw = sel.get("raw_rows",0); clean = sel.get("clean_rows",0); masked = sel.get("masked_rows",0)
 
 dataset_up = sel.get("dataset", "customers").upper()
+dataset_lower = sel.get("dataset", "customers").lower()
+is_custom = dataset_lower not in ["customers", "orders", "payments", "products"]
+raw_table_name = f"RAW_{dataset_up}" if is_custom else f"RAW_OLIST_{dataset_up}"
+
 lineage_code = f"""
 graph LR
-    RAW["RAW_OLIST_{dataset_up}<br/>{raw} rows"] -->|Transform + Dedup| SILVER["SILVER_{dataset_up}_CLEAN<br/>{clean} rows"]
+    RAW["{raw_table_name}<br/>{raw} rows"] -->|Transform + Dedup| SILVER["SILVER_{dataset_up}_CLEAN<br/>{clean} rows"]
     SILVER -->|PII Masking| MASKED["SILVER_{dataset_up}_MASKED<br/>{masked} rows"]
     MASKED -->|KPI Aggregation| GOLD["GOLD_{dataset_up}_KPIS<br/>7 KPIs"]
     RAW -->|Audit Logging| AUDIT["PIPELINE_AUDIT_LOG"]
@@ -59,7 +63,7 @@ if mlog:
     for m in mlog:
         col_lineage.append({
             "Source Column": m.get("column", ""),
-            "Source Table": f"RAW_OLIST_{dataset_up}",
+            "Source Table": raw_table_name,
             "Transform": m.get("action", ""),
             "Target Column": m.get("column", "").upper(),
             "Target Table": f"SILVER_{dataset_up}_MASKED"

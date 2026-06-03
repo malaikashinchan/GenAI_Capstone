@@ -37,65 +37,24 @@ Respond ONLY with JSON. No markdown.
 """
 
 
-def _compute_customers_kpis(df: pd.DataFrame) -> dict:
-    kpis = {
-        "total_customers":     int(df.shape[0]),
-        "unique_customers":    int(df["customer_unique_id"].nunique()) if "customer_unique_id" in df.columns else 0,
-        "states_covered":      int(df["customer_state"].nunique()) if "customer_state" in df.columns else 0,
-        "cities_covered":      int(df["customer_city"].nunique()) if "customer_city" in df.columns else 0,
-        "top_states":          df["customer_state"].value_counts().head(5).to_dict() if "customer_state" in df.columns else {},
-        "top_cities":          df["customer_city"].value_counts().head(5).to_dict() if "customer_city" in df.columns else {},
-        "null_rate_pct":       round(df.isnull().mean().mean() * 100, 2),
-    }
-    return kpis
+KPI_PROMPT = """
+You are a senior data analyst. I am providing you a sample of SYNTHETIC data from a dataset named '{dataset}'.
+The columns and data types match the real data exactly, but the values are completely fake.
+Based on this schema, define exactly 5 relevant business KPIs (e.g., total_revenue, unique_customers, avg_amount).
 
+For each KPI, provide the exact Python Pandas code expression that calculates it. The input DataFrame variable is named `df`.
+For example:
+{{
+  "total_revenue": "float(df['payment_value'].sum())",
+  "unique_customers": "int(df['customer_id'].nunique())"
+}}
 
-def _compute_orders_kpis(df: pd.DataFrame) -> dict:
-    kpis = {
-        "total_orders":        int(df.shape[0]),
-        "unique_customers":    int(df["customer_id"].nunique()) if "customer_id" in df.columns else 0,
-        "status_breakdown":    df["order_status"].value_counts().to_dict() if "order_status" in df.columns else {},
-        "null_rate_pct":       round(df.isnull().mean().mean() * 100, 2),
-    }
-    return kpis
+Data Sample:
+{sample}
 
-
-def _compute_payments_kpis(df: pd.DataFrame) -> dict:
-    kpis: dict = {"total_payments": int(df.shape[0])}
-    if "payment_value" in df.columns:
-        vals = pd.to_numeric(df["payment_value"], errors="coerce")
-        kpis["total_revenue"]      = round(float(vals.sum()), 2)
-        kpis["avg_payment_value"]  = round(float(vals.mean()), 2)
-        kpis["max_payment_value"]  = round(float(vals.max()), 2)
-        kpis["min_payment_value"]  = round(float(vals.min()), 2)
-    if "payment_type" in df.columns:
-        kpis["payment_type_breakdown"] = df["payment_type"].value_counts().to_dict()
-    if "payment_installments" in df.columns:
-        inst = pd.to_numeric(df["payment_installments"], errors="coerce")
-        kpis["avg_installments"] = round(float(inst.mean()), 2)
-    kpis["null_rate_pct"] = round(df.isnull().mean().mean() * 100, 2)
-    return kpis
-
-
-def _compute_products_kpis(df: pd.DataFrame) -> dict:
-    kpis = {
-        "total_products":      int(df.shape[0]),
-        "unique_categories":   int(df["product_category_name"].nunique()) if "product_category_name" in df.columns else 0,
-        "top_categories":      df["product_category_name"].value_counts().head(10).to_dict() if "product_category_name" in df.columns else {},
-        "null_rate_pct":       round(df.isnull().mean().mean() * 100, 2),
-    }
-    if "product_weight_g" in df.columns:
-        w = pd.to_numeric(df["product_weight_g"], errors="coerce")
-        kpis["avg_weight_g"] = round(float(w.mean()), 2)
-    return kpis
-
-
-KPI_COMPUTERS = {
-    "customers": _compute_customers_kpis,
-    "orders":    _compute_orders_kpis,
-    "payments":  _compute_payments_kpis,
-    "products":  _compute_products_kpis,
-}
+Return ONLY a valid JSON dictionary where keys are the KPI names (snake_case) and values are the Pandas code strings.
+Do not return markdown. Just return the raw JSON object.
+"""
 
 
 def run(state: AgentState) -> AgentState:
@@ -117,9 +76,49 @@ def run(state: AgentState) -> AgentState:
 
         logger.info(f"GOLD_KPI | Loaded {len(df):,} Silver rows")
 
-        # Compute KPIs
-        compute_fn = KPI_COMPUTERS.get(dataset, _compute_customers_kpis)
-        kpis = compute_fn(df)
+        # Generate 25 rows of synthetic data for the LLM to preserve privacy
+        import numpy as np
+        fake_data = {}
+        num_rows = 25
+        for col, dtype in df.dtypes.items():
+            if pd.api.types.is_numeric_dtype(dtype):
+                if pd.api.types.is_float_dtype(dtype):
+                    fake_data[col] = np.random.uniform(1.0, 100.0, num_rows).round(2)
+                else:
+                    fake_data[col] = np.random.randint(1, 1000, num_rows)
+            elif pd.api.types.is_bool_dtype(dtype):
+                fake_data[col] = np.random.choice([True, False], num_rows)
+            elif pd.api.types.is_datetime64_any_dtype(dtype):
+                fake_data[col] = pd.date_range("2024-01-01", periods=num_rows)
+            else:
+                fake_data[col] = [f"sample_{col}_{i}" for i in range(num_rows)]
+        
+        fake_df = pd.DataFrame(fake_data)
+
+        # Send only synthetic data to LLM to get Pandas logic
+        kpi_prompt_text = KPI_PROMPT.format(
+            dataset=dataset,
+            sample=fake_df.to_json(orient="records")
+        )
+        try:
+            raw_kpis = llm_client.invoke(kpi_prompt_text).strip()
+            import re
+            match = re.search(r'\{.*\}', raw_kpis, re.DOTALL)
+            kpis_code = json.loads(match.group(0)) if match else json.loads(raw_kpis)
+            
+            kpis = {}
+            for k, code_str in kpis_code.items():
+                try:
+                    # SECURE EXECUTION: Evaluate Pandas expression locally on the REAL dataset
+                    val = eval(str(code_str), {"df": df, "pd": pd, "np": np})
+                    if hasattr(val, "item"): val = val.item()
+                    kpis[k] = round(val, 2) if isinstance(val, float) else val
+                except Exception as eval_err:
+                    logger.warning(f"GOLD_KPI | Failed to eval KPI {k} with code {code_str}: {eval_err}")
+                    kpis[k] = 0
+        except Exception as e:
+            logger.warning(f"GOLD_KPI | Failed to generate KPIs via LLM: {e}")
+            kpis = {"total_rows": len(df)}
 
         logger.info(f"GOLD_KPI | KPIs computed: {list(kpis.keys())}")
 
@@ -131,14 +130,12 @@ def run(state: AgentState) -> AgentState:
             )
             raw_insights = llm_client.invoke(insight_prompt)
             raw_insights = raw_insights.strip()
-            if raw_insights.startswith("```"):
-                raw_insights = raw_insights.split("```")[1]
-                if raw_insights.startswith("json"):
-                    raw_insights = raw_insights[4:]
-            raw_insights = raw_insights.strip()
-            start = raw_insights.find("[")
-            end   = raw_insights.rfind("]") + 1
-            insights = json.loads(raw_insights[start:end]) if start != -1 else []
+            import re
+            match = re.search(r'\[.*\]', raw_insights, re.DOTALL)
+            if match:
+                insights = json.loads(match.group(0))
+            else:
+                insights = json.loads(raw_insights)
         except Exception as ins_err:
             logger.warning(f"GOLD_KPI | LLM insights failed (non-critical): {ins_err}")
             insights = []

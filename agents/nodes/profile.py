@@ -19,7 +19,7 @@ DATASET_TABLE_MAP = {
 def run(state: AgentState) -> AgentState:
     state["current_node"] = "profile"
     dataset = state.get("dataset_name", PipelineConfig.ACTIVE_DATASET)
-    table   = DATASET_TABLE_MAP.get(dataset, PipelineConfig.RAW_TABLE_CUSTOMERS)
+    table   = DATASET_TABLE_MAP.get(dataset, f"RAW_{dataset.upper()}")
 
     logger.info(f"PROFILE | Starting | dataset={dataset} | table={table}")
 

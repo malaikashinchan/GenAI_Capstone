@@ -125,7 +125,7 @@ def _apply_olist_healing(df: pd.DataFrame, dataset: str) -> pd.DataFrame:
 def run(state: AgentState) -> AgentState:
     state["current_node"] = "transform"
     dataset  = state.get("dataset_name", PipelineConfig.ACTIVE_DATASET)
-    table    = DATASET_TABLE_MAP.get(dataset, PipelineConfig.RAW_TABLE_CUSTOMERS)
+    table    = DATASET_TABLE_MAP.get(dataset, f"RAW_{dataset.upper()}")
     ge_rules = state.get("ge_rules", [])
 
     logger.info(f"TRANSFORM | Starting | dataset={dataset}")

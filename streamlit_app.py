@@ -39,8 +39,8 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
 
 /* Apply Inter to everything EXCEPT Material Icons glyphs */
-*:not(.material-icons):not([class*="material"]), [class*="css"]:not(.material-icons) {
-  font-family: 'Inter', sans-serif !important;
+html, body, p, h1, h2, h3, h4, h5, h6, a, button, input, select, textarea {
+  font-family: 'Inter', sans-serif;
 }
 .material-icons, span.material-icons {
   font-family: 'Material Icons' !important;
@@ -518,8 +518,16 @@ with col_left:
 
 with col_right:
     st.markdown("### 🎛️ Control Panel")
-    c_rows = st.slider("Customers Batch Size", 100, 1000, 200, 50)
-    c_dataset = st.selectbox("Select Target Dataset", ["customers", "orders", "payments", "products"])
+    with st.expander("Trigger Agentic Run", expanded=False):
+        upload_dir = Path("data/uploads")
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        custom_datasets = [f.stem for f in upload_dir.glob("*.csv")]
+        all_datasets = ["customers", "orders", "payments", "products"] + custom_datasets
+
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            c_dataset = st.selectbox("Dataset", all_datasets)
+        c_rows = st.slider("Batch Size", 100, 1000, 200, 50)
 
     btn1, btn2 = st.columns(2)
     with btn1:
@@ -606,7 +614,8 @@ with tab1:
             fig.add_trace(
                 go.Bar(x=hdf["label"], y=hdf.get("masked_rows", hdf["clean_rows"]), name="PII Masked",
                        marker_color="#818cf8"))
-            fig.update_layout(title="Volume Flow through Pipeline Layers", barmode="group", height=320,
+            fig.update_layout(title="Volume Flow through Pipeline Layers (Log Scale)", barmode="group", height=320,
+                              yaxis_type="log",
                               template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
             st.plotly_chart(fig, use_container_width=True)
         with g2:

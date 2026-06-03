@@ -12,7 +12,7 @@ from loguru import logger
 
 
 RULE_GEN_PROMPT = """
-You are a professional Data Quality Engineer working with the Olist Brazilian E-Commerce dataset.
+You are a professional Data Quality Engineer working with a dynamic dataset.
 
 Dataset: {dataset}
 Schema: {schema}
@@ -35,11 +35,11 @@ Format EXACTLY as:
 
 Rules to include:
 - Not-null checks for all required/key columns
-- Uniqueness for primary key columns (customer_id, order_id, product_id, etc.)
-- Value-set checks for categorical columns (status, state, payment_type, etc.)
-- Range checks for numeric columns (payment_value, product_weight_g, etc.)
+- Uniqueness for primary key columns (e.g. id columns)
+- Value-set checks for categorical columns
+- Range checks for numeric columns
 - Regex checks ONLY for known format columns like zip codes
-- DO NOT generate regex rules for UUID columns (customer_id, order_id, product_id, etc.) — they may contain modified values after healing
+- DO NOT generate regex rules for UUID or ID columns — they may contain modified values after healing
 - DO NOT generate regex rules for phone numbers or email addresses — too many valid formats
 - DO NOT generate value_set rules with an empty list
 - For uniqueness rules, always add: "kwargs": {"mostly": 0.98} to allow ~2% duplicates

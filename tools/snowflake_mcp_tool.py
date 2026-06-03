@@ -135,6 +135,13 @@ class SnowflakeMCPTool:
         path = csv_map.get(table_name)
         if path and Path(path).exists():
             return pd.read_csv(path)
+            
+        # Support dynamic custom datasets
+        if table_name.startswith("RAW_") and not table_name.startswith("RAW_OLIST_"):
+            custom_dataset = table_name.replace("RAW_", "").lower()
+            p = f"data/uploads/{custom_dataset}.csv"
+            if Path(p).exists():
+                return pd.read_csv(p)
         for layer in ["silver", "bronze", "gold"]:
             p = f"{PipelineConfig.OUTPUTS_DIR}/{layer}/{table_name}.csv"
             if Path(p).exists():

@@ -1,5 +1,7 @@
 """Page 1 — Pipeline Control Panel"""
 import os, subprocess, json, time
+import signal
+import psutil
 import streamlit as st
 from pathlib import Path
 from dotenv import load_dotenv
@@ -11,7 +13,7 @@ st.set_page_config(page_title="Pipeline Control", page_icon="🎛️", layout="w
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap');
-*, [class*="css"] { font-family: 'Inter', sans-serif !important; }
+html, body, p, h1, h2, h3, h4, h5, h6, a, button, input, select, textarea { font-family: 'Inter', sans-serif; }
 .stApp { background: #0b0b14; color: #e2e8f0; }
 
 /* Config card grid */
@@ -66,18 +68,35 @@ st.caption("Generate data, trigger pipeline runs, control batch parameters")
 # ── Controls ────────────────────────────────────────────────────
 c1, c2, c3 = st.columns(3)
 with c1:
-    rows = st.slider("Batch Size (customers)", 100, 1000, 200, 50)
+    rows = st.slider("Batch Size", 100, 1000, 200, 50)
 with c2:
     interval = st.slider("Loop Interval (seconds)", 30, 120, 45, 15)
 with c3:
     mode = st.radio("Run Mode", ["Single Batch", "Continuous Loop"], horizontal=True)
 
 st.divider()
-ds_sel = st.multiselect(
-    "Datasets to Process", 
-    ["customers", "orders", "payments", "products"], 
-    default=["customers", "orders", "payments", "products"]
-)
+
+# Scan for custom datasets
+upload_dir = Path("data/uploads")
+upload_dir.mkdir(parents=True, exist_ok=True)
+custom_datasets = [f.stem for f in upload_dir.glob("*.csv")]
+all_datasets = ["customers", "orders", "payments", "products"] + custom_datasets
+
+c1, c2 = st.columns([2, 1])
+with c1:
+    ds_sel = st.multiselect(
+        "Datasets to Process", 
+        all_datasets, 
+        default=all_datasets
+    )
+with c2:
+    uploaded_file = st.file_uploader("Upload Custom Dataset", type=["csv"])
+    if uploaded_file is not None:
+        file_path = upload_dir / uploaded_file.name
+        with open(file_path, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+        st.success(f"Saved {uploaded_file.name}")
+        st.rerun()
 
 st.divider()
 col1, col2, col3 = st.columns(3)

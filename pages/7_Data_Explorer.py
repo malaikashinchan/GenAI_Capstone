@@ -104,20 +104,23 @@ from pathlib import Path
 from config.settings import PipelineConfig
 
 def get_available_tables():
-    datasets = set(["customers"])
+    dataset_names = set(["customers"])
     hist_path = Path("metadata/batch_history.json")
     if hist_path.exists():
         try:
             with open(hist_path) as f:
                 for b in json.load(f):
                     if "dataset" in b:
-                        datasets.add(b["dataset"].lower())
+                        dataset_names.add(b["dataset"].upper())
         except: pass
     
     _tables = {}
-    for ds in datasets:
-        dsu = ds.upper()
-        _tables[f"🟤 RAW_OLIST_{dsu}"] = f"RAW_OLIST_{dsu}"
+    for dsu in dataset_names:
+        dataset_lower = dsu.lower()
+        is_custom = dataset_lower not in ["customers", "orders", "payments", "products"]
+        raw_table_name = f"RAW_{dsu}" if is_custom else f"RAW_OLIST_{dsu}"
+        
+        _tables[f"🟤 {raw_table_name}"] = raw_table_name
         _tables[f"⚪ SILVER_{dsu}_CLEAN"] = f"SILVER_{dsu}_CLEAN"
         _tables[f"🔒 SILVER_{dsu}_MASKED"] = f"SILVER_{dsu}_MASKED"
         _tables[f"🥇 GOLD_{dsu}_KPIS"] = f"GOLD_{dsu}_KPIS"
@@ -144,13 +147,18 @@ with col_btn:
 with st.spinner(f"Loading {table}..."):
     if PipelineConfig.USE_LOCAL_CSV:
         # Load from Local CSV
-        csv_map = {
-            "RAW_OLIST_CUSTOMERS": f"{PipelineConfig.DATA_DIR}/olist_customers_dataset.csv",
-            "RAW_OLIST_ORDERS":    f"{PipelineConfig.DATA_DIR}/olist_orders_dataset.csv",
-            "RAW_OLIST_PAYMENTS":  f"{PipelineConfig.DATA_DIR}/olist_order_payments_dataset.csv",
-            "RAW_OLIST_PRODUCTS":  f"{PipelineConfig.DATA_DIR}/olist_products_dataset.csv",
-        }
-        path = csv_map.get(table)
+        path = None
+        if table.startswith("RAW_OLIST_"):
+            csv_map = {
+                "RAW_OLIST_CUSTOMERS": f"{PipelineConfig.DATA_DIR}/olist_customers_dataset.csv",
+                "RAW_OLIST_ORDERS":    f"{PipelineConfig.DATA_DIR}/olist_orders_dataset.csv",
+                "RAW_OLIST_PAYMENTS":  f"{PipelineConfig.DATA_DIR}/olist_order_payments_dataset.csv",
+                "RAW_OLIST_PRODUCTS":  f"{PipelineConfig.DATA_DIR}/olist_products_dataset.csv",
+            }
+            path = csv_map.get(table)
+        elif table.startswith("RAW_"):
+            custom_dataset = table.replace("RAW_", "").lower()
+            path = f"data/uploads/{custom_dataset}.csv"
         df = pd.DataFrame()
         if path and Path(path).exists():
             df = pd.read_csv(path).head(limit)

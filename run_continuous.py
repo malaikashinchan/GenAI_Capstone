@@ -321,24 +321,47 @@ def run_one_batch(dataset: str, n_rows: int, batch_id: str, batch_num: int) -> d
     ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     banner(batch_num, batch_id, dataset, ts)
 
-    # ── Step 1: Generate ALL 4 datasets → Snowflake Bronze ─────────
-    print(f"\n{hdr('STEP 1 — Generate ALL Datasets → Snowflake RAW Tables', YL)}")
+    # ── Step 1: Ingest RAW Data to Snowflake ─────────
+    print(f"\n{hdr('STEP 1 — Ingest RAW Data to Snowflake', YL)}")
 
     np.random.seed(); random.seed()   # truly random every batch
+    is_custom = dataset not in ["customers", "orders", "payments", "products"]
 
-    # Use generate_data.py's run_batch to push ALL 4 tables
-    from generate_data import run_batch as gen_full_batch
-    gen_full_batch(n_customers=n_rows, preview=False)
+    if not is_custom:
+        # Use generate_data.py's run_batch to push ALL 4 tables
+        from generate_data import run_batch as gen_full_batch
+        gen_full_batch(n_customers=n_rows, preview=False)
 
-    # Now read back the customers table to display Bronze report
-    conn = _get_conn()
-    try:
-        df = pd.read_sql(f"SELECT * FROM RAW_OLIST_CUSTOMERS", conn)
-        df.columns = [c.lower() for c in df.columns]
-        print_bronze_report(batch_id, df, dataset)
-        print(f"\n  {GR}✓ All 4 datasets loaded → Snowflake RAW tables{R}")
-    finally:
-        conn.close()
+        conn = _get_conn()
+        try:
+            df = pd.read_sql(f"SELECT * FROM RAW_OLIST_{dataset.upper()}", conn)
+            df.columns = [c.lower() for c in df.columns]
+            print_bronze_report(batch_id, df, dataset)
+            print(f"\n  {GR}✓ All 4 datasets loaded → Snowflake RAW tables{R}")
+        finally:
+            conn.close()
+    else:
+        # Load custom dataset
+        csv_path = Path(f"data/uploads/{dataset}.csv")
+        if not csv_path.exists():
+            print(f"{RD}❌ Custom dataset {dataset} not found at {csv_path}{R}")
+            return {}
+        df = pd.read_csv(csv_path)
+        df["batch_id"] = batch_id
+        df["ingested_at"] = datetime.datetime.utcnow().isoformat()
+        from config.settings import PipelineConfig
+        if PipelineConfig.USE_LOCAL_CSV:
+            df.to_csv(csv_path, index=False)
+            print_bronze_report(batch_id, df, dataset)
+            print(f"\n  {GR}✓ Custom dataset {dataset} updated locally (Snowflake bypassed due to profile settings){R}")
+        else:
+            conn = _get_conn()
+            try:
+                _write_to_snowflake(df, f"RAW_{dataset.upper()}", conn)
+                print_bronze_report(batch_id, df, dataset)
+                print(f"\n  {GR}✓ Custom dataset {dataset} loaded → Snowflake RAW table RAW_{dataset.upper()}{R}")
+            finally:
+                conn.close()
 
 
     # ── Step 2: Run LangGraph pipeline ────────────────────────────
@@ -442,7 +465,6 @@ def main():
     parser.add_argument("--loop",     action="store_true",              help="Loop indefinitely")
     parser.add_argument("--datasets", nargs="+",
                         default=["customers", "orders", "payments", "products"],
-                        choices=["customers","orders","payments","products"],
                         help="Datasets to cycle through")
     args = parser.parse_args()
 

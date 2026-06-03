@@ -68,6 +68,13 @@ def run(state: AgentState) -> AgentState:
 
     logger.info(f"SCHEMA_DRIFT | Starting | dataset={dataset} | run_id={run_id}")
 
+    if not expected:
+        logger.info(f"SCHEMA_DRIFT | No known schema for {dataset}, skipping drift detection.")
+        state["schema_drift_events"] = []
+        state["schema_drift_run_id"] = run_id
+        state["node_status"]["schema_drift"] = "pass"
+        return state
+
     try:
         old_cols = set(expected.keys())
         new_cols = set(incoming.keys())
