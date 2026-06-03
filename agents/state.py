@@ -28,6 +28,10 @@ class AgentState(TypedDict):
     row_count:           int          # total rows in RAW table
     dataset_name:        str          # which Olist dataset is active
 
+    # ── Node 1b — Bronze Inspector ──────────────────────────────────
+    bronze_report:       Dict         # LLM quality report
+    bronze_issues:       List         # list of issues found
+
     # ── Node 2 — Schema Drift ─────────────────────────────────────
     schema_drift_events: List         # list of drift event dicts
     schema_drift_run_id: str          # run identifier for drift log
@@ -54,6 +58,7 @@ class AgentState(TypedDict):
     masked_table:        str          # name of masked Silver table
     masked_row_count:    int          # rows in masked table
     masked_df_path:      str          # path to saved masked CSV
+    masking_log:         List         # audit log of masking actions
 
     # ── Node 8 — Gold KPI Generator ───────────────────────────────
     gold_kpis:           Dict         # computed KPI metrics dict

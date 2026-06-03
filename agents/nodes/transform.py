@@ -138,10 +138,7 @@ def run(state: AgentState) -> AgentState:
 
         logger.info(f"TRANSFORM | Loaded {len(df):,} raw rows")
 
-        # Apply basic dataset-specific healing
-        df = _apply_olist_healing(df, dataset)
-
-        # Build clean/quarantine split from GE rules
+        # 1. Build clean/quarantine split from GE rules on the RAW data
         if ge_rules:
             clean_mask      = _build_clean_mask(df, ge_rules)
             clean_df        = df[clean_mask].copy().reset_index(drop=True)
@@ -150,6 +147,10 @@ def run(state: AgentState) -> AgentState:
             # No rules — treat everything as clean
             clean_df      = df.copy()
             quarantine_df = pd.DataFrame(columns=df.columns)
+
+        # 2. Apply basic dataset-specific healing ONLY to the clean rows
+        # This prevents the healing function from "hiding" nulls from the quarantine filter
+        clean_df = _apply_olist_healing(clean_df, dataset)
 
         clean_count      = len(clean_df)
         quarantine_count = len(quarantine_df)

@@ -402,7 +402,7 @@ Dashboard auto-refreshes every 30 seconds via `streamlit-autorefresh` to show li
 # LLM Provider
 LLM_PROVIDER=groq
 LLM_MODEL=llama-3.3-70b-versatile
-GROQ_API_KEY=gsk_...
+
 
 # Snowflake
 SNOWFLAKE_ACCOUNT=XXXXX-YYYYY

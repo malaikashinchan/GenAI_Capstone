@@ -29,6 +29,52 @@ from agents.nodes import (
     lineage_tracker, audit_writer, alert, heal_agent,
 )
 from loguru import logger
+import os
+import json
+
+def _write_live_state(node_name: str, status: str):
+    try:
+        os.makedirs("metadata", exist_ok=True)
+        path = "metadata/pipeline_live_state.json"
+        state = {}
+        if os.path.exists(path):
+            with open(path) as f:
+                try: state = json.load(f)
+                except: pass
+        
+        state["active_node"] = node_name
+        state["status"] = status
+        
+        if "nodes" not in state:
+            state["nodes"] = {}
+        
+        # When a new run starts (at profile), reset other nodes to idle
+        if node_name == "profile" and status == "running":
+            state["nodes"] = {}
+            
+        state["nodes"][node_name] = status
+        
+        with open(path, "w") as f:
+            json.dump(state, f, indent=2)
+    except Exception as e:
+        logger.warning(f"Failed to write live state: {e}")
+
+
+def make_node(node_name, run_func):
+    def wrapped(state: AgentState) -> AgentState:
+        _write_live_state(node_name, "running")
+        try:
+            res = run_func(state)
+            if node_name == "heal_agent":
+                _write_live_state(node_name, "passed")
+            else:
+                status = res.get("node_status", {}).get(node_name, "pass")
+                _write_live_state(node_name, "passed" if status == "pass" else "failed")
+            return res
+        except Exception as e:
+            _write_live_state(node_name, "failed")
+            raise e
+    return wrapped
 
 
 def route(state: AgentState) -> str:
@@ -51,19 +97,19 @@ def build_pipeline():
     graph = StateGraph(AgentState)
 
     # ── Register all nodes ────────────────────────────────────────
-    graph.add_node("profile",          profile.run)
-    graph.add_node("bronze_inspector", bronze_inspector.run)   # NEW — LLM on Bronze
-    graph.add_node("schema_drift",     schema_drift.run)
-    graph.add_node("pii_detector",     pii_detector.run)       # LLM on Bronze
-    graph.add_node("rule_gen",         rule_gen.run)           # LLM on Bronze
-    graph.add_node("validator",        validator.run)
-    graph.add_node("transform",        transform.run)
-    graph.add_node("pii_masker",       pii_masker.run)         # LLM on Silver
-    graph.add_node("gold_kpi",         gold_kpi.run)           # LLM on Gold
-    graph.add_node("lineage_tracker",  lineage_tracker.run)
-    graph.add_node("audit_writer",     audit_writer.run)
-    graph.add_node("alert",            alert.run)
-    graph.add_node("heal_agent",       heal_agent.run)         # LLM everywhere
+    graph.add_node("profile",          make_node("profile", profile.run))
+    graph.add_node("bronze_inspector", make_node("bronze_inspector", bronze_inspector.run))   # NEW — LLM on Bronze
+    graph.add_node("schema_drift",     make_node("schema_drift", schema_drift.run))
+    graph.add_node("pii_detector",     make_node("pii_detector", pii_detector.run))       # LLM on Bronze
+    graph.add_node("rule_gen",         make_node("rule_gen", rule_gen.run))           # LLM on Bronze
+    graph.add_node("validator",        make_node("validator", validator.run))
+    graph.add_node("transform",        make_node("transform", transform.run))
+    graph.add_node("pii_masker",       make_node("pii_masker", pii_masker.run))         # LLM on Silver
+    graph.add_node("gold_kpi",         make_node("gold_kpi", gold_kpi.run))           # LLM on Gold
+    graph.add_node("lineage_tracker",  make_node("lineage_tracker", lineage_tracker.run))
+    graph.add_node("audit_writer",     make_node("audit_writer", audit_writer.run))
+    graph.add_node("alert",            make_node("alert", alert.run))
+    graph.add_node("heal_agent",       make_node("heal_agent", heal_agent.run))         # LLM everywhere
 
     graph.set_entry_point("profile")
 

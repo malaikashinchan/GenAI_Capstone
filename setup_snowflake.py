@@ -9,7 +9,12 @@ import snowflake.connector
 from snowflake.connector.pandas_tools import write_pandas
 from dotenv import load_dotenv
 
-load_dotenv()
+if os.path.exists(".env"):
+    load_dotenv(".env")
+elif os.path.exists(".env.example"):
+    load_dotenv(".env.example")
+else:
+    load_dotenv()
 
 conn = snowflake.connector.connect(
     account=os.getenv("SNOWFLAKE_ACCOUNT"),
@@ -85,23 +90,17 @@ DDL = [
         kpi_data     VARIANT,
         computed_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )""",
-    """CREATE TABLE IF NOT EXISTS PIPELINE_LINEAGE (
-        run_id   VARCHAR,
-        dataset  VARCHAR,
-        node     VARCHAR,
-        status   VARCHAR,
-        ts       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    """CREATE OR REPLACE TABLE PIPELINE_LINEAGE (
+        RECORD_JSON  VARIANT,
+        RECORDED_AT  TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
     )""",
-    """CREATE TABLE IF NOT EXISTS PIPELINE_AUDIT_LOG (
-        run_id     VARCHAR,
-        dataset    VARCHAR,
-        summary    VARIANT,
-        logged_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    """CREATE OR REPLACE TABLE PIPELINE_AUDIT_LOG (
+        RECORD_JSON  VARIANT,
+        RECORDED_AT  TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
     )""",
-    """CREATE TABLE IF NOT EXISTS SCHEMA_DRIFT_LOG (
-        dataset      VARCHAR,
-        drift_info   VARIANT,
-        detected_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    """CREATE OR REPLACE TABLE SCHEMA_DRIFT_LOG (
+        RECORD_JSON  VARIANT,
+        RECORDED_AT  TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
     )""",
 ]
 

@@ -25,3 +25,8 @@ plotly>=5.20.0
 python-dotenv>=1.0.0
 loguru>=0.7.0
 faker>=24.0.0
+
+# Great Expectations & Streamlit Auto-refresh
+great-expectations>=0.18.0
+streamlit-autorefresh>=1.0.1
+

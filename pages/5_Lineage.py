@@ -33,11 +33,12 @@ def render_mermaid(code: str):
 st.markdown("### 🗺️ Table-Level Lineage")
 raw = sel.get("raw_rows",0); clean = sel.get("clean_rows",0); masked = sel.get("masked_rows",0)
 
+dataset_up = sel.get("dataset", "customers").upper()
 lineage_code = f"""
 graph LR
-    RAW["RAW_OLIST_CUSTOMERS<br/>{raw} rows"] -->|Transform + Dedup| SILVER["SILVER_CUSTOMERS_CLEAN<br/>{clean} rows"]
-    SILVER -->|PII Masking| MASKED["SILVER_CUSTOMERS_MASKED<br/>{masked} rows"]
-    MASKED -->|KPI Aggregation| GOLD["GOLD_CUSTOMERS_KPIS<br/>7 KPIs"]
+    RAW["RAW_OLIST_{dataset_up}<br/>{raw} rows"] -->|Transform + Dedup| SILVER["SILVER_{dataset_up}_CLEAN<br/>{clean} rows"]
+    SILVER -->|PII Masking| MASKED["SILVER_{dataset_up}_MASKED<br/>{masked} rows"]
+    MASKED -->|KPI Aggregation| GOLD["GOLD_{dataset_up}_KPIS<br/>7 KPIs"]
     RAW -->|Audit Logging| AUDIT["PIPELINE_AUDIT_LOG"]
     
     style RAW fill:#92400e,color:#fef3c7
@@ -52,16 +53,20 @@ render_mermaid(lineage_code)
 st.divider()
 st.markdown("### 📊 Column-Level Transformations")
 
-col_lineage = [
-    {"Source Column":"customer_email", "Source Table":"RAW_OLIST_CUSTOMERS", "Transform":"SHA-256 Hash", "Target Column":"CUSTOMER_EMAIL", "Target Table":"SILVER_CUSTOMERS_MASKED"},
-    {"Source Column":"customer_phone", "Source Table":"RAW_OLIST_CUSTOMERS", "Transform":"SHA-256 Hash", "Target Column":"CUSTOMER_PHONE", "Target Table":"SILVER_CUSTOMERS_MASKED"},
-    {"Source Column":"customer_id", "Source Table":"RAW_OLIST_CUSTOMERS", "Transform":"Partial Mask", "Target Column":"CUSTOMER_ID", "Target Table":"SILVER_CUSTOMERS_MASKED"},
-    {"Source Column":"customer_unique_id", "Source Table":"RAW_OLIST_CUSTOMERS", "Transform":"Partial Mask", "Target Column":"CUSTOMER_UNIQUE_ID", "Target Table":"SILVER_CUSTOMERS_MASKED"},
-    {"Source Column":"customer_zip_code_prefix", "Source Table":"RAW_OLIST_CUSTOMERS", "Transform":"Partial Mask", "Target Column":"CUSTOMER_ZIP_CODE_PREFIX", "Target Table":"SILVER_CUSTOMERS_MASKED"},
-    {"Source Column":"customer_city", "Source Table":"RAW_OLIST_CUSTOMERS", "Transform":"Pass-through", "Target Column":"CUSTOMER_CITY", "Target Table":"SILVER_CUSTOMERS_MASKED"},
-    {"Source Column":"customer_state", "Source Table":"RAW_OLIST_CUSTOMERS", "Transform":"Null → UNKNOWN", "Target Column":"CUSTOMER_STATE", "Target Table":"SILVER_CUSTOMERS_MASKED"},
-]
-st.dataframe(pd.DataFrame(col_lineage), use_container_width=True, hide_index=True)
+mlog = sel.get("masking_log", [])
+if mlog:
+    col_lineage = []
+    for m in mlog:
+        col_lineage.append({
+            "Source Column": m.get("column", ""),
+            "Source Table": f"RAW_OLIST_{dataset_up}",
+            "Transform": m.get("action", ""),
+            "Target Column": m.get("column", "").upper(),
+            "Target Table": f"SILVER_{dataset_up}_MASKED"
+        })
+    st.dataframe(pd.DataFrame(col_lineage), use_container_width=True, hide_index=True)
+else:
+    st.info("No column-level masking transformations recorded for this batch.")
 
 # ── Node Pipeline Lineage ──────────────────────────────────────
 st.divider()

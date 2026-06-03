@@ -5,25 +5,50 @@ Supports Snowflake (production) and local CSV (dev) modes.
 Dataset: Olist Brazilian E-Commerce
 """
 import os
+import json
 from dotenv import load_dotenv
 
-load_dotenv()
+if os.path.exists(".env"):
+    load_dotenv(".env")
+elif os.path.exists(".env.example"):
+    load_dotenv(".env.example")
+else:
+    load_dotenv()
+
+# Dynamic Profile Injector
+profile_config = {}
+try:
+    active_profile_path = "metadata/active_profile.json"
+    if os.path.exists(active_profile_path):
+        with open(active_profile_path) as f:
+            ap = json.load(f)
+            prof_name = ap.get("active_profile")
+            prof_file = f"profiles/{prof_name}.json"
+            if prof_name and os.path.exists(prof_file):
+                with open(prof_file) as pf:
+                    profile_config = json.load(pf)
+except Exception:
+    pass
+
+
+def get_cfg(key, default=None):
+    return profile_config.get(key, os.getenv(key, default))
 
 
 class SnowflakeConfig:
-    ACCOUNT    = os.getenv("SNOWFLAKE_ACCOUNT")
-    USER       = os.getenv("SNOWFLAKE_USER")
-    PASSWORD   = os.getenv("SNOWFLAKE_PASSWORD")
-    WAREHOUSE  = os.getenv("SNOWFLAKE_WAREHOUSE", "COMPUTE_WH")
-    DATABASE   = os.getenv("SNOWFLAKE_DATABASE",  "OLIST_DB")
-    SCHEMA     = os.getenv("SNOWFLAKE_SCHEMA",    "RAW")
-    ROLE       = os.getenv("SNOWFLAKE_ROLE",       "SYSADMIN")
+    ACCOUNT    = get_cfg("SNOWFLAKE_ACCOUNT")
+    USER       = get_cfg("SNOWFLAKE_USER")
+    PASSWORD   = get_cfg("SNOWFLAKE_PASSWORD")
+    WAREHOUSE  = get_cfg("SNOWFLAKE_WAREHOUSE", "COMPUTE_WH")
+    DATABASE   = get_cfg("SNOWFLAKE_DATABASE",  "OLIST_DB")
+    SCHEMA     = get_cfg("SNOWFLAKE_SCHEMA",    "RAW")
+    ROLE       = get_cfg("SNOWFLAKE_ROLE",       "SYSADMIN")
 
 
 class LLMConfig:
-    API_KEY    = os.getenv("ANTHROPIC_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("GROQ_API_KEY")
-    MODEL      = os.getenv("LLM_MODEL",    "claude-sonnet-4-5")
-    PROVIDER   = os.getenv("LLM_PROVIDER", "anthropic")   # 'anthropic' | 'openai' | 'groq'
+    API_KEY    = get_cfg("ANTHROPIC_API_KEY") or get_cfg("OPENAI_API_KEY") or get_cfg("GROQ_API_KEY")
+    MODEL      = get_cfg("LLM_MODEL",    "claude-sonnet-4-5")
+    PROVIDER   = get_cfg("LLM_PROVIDER", "anthropic")   # 'anthropic' | 'openai' | 'groq' | 'ollama'
 
 
 class PipelineConfig:
@@ -53,4 +78,4 @@ class PipelineConfig:
     OUTPUTS_DIR           = os.getenv("OUTPUTS_DIR",  "outputs")
 
     # Set to "true" to run without Snowflake (uses local CSVs)
-    USE_LOCAL_CSV         = os.getenv("USE_LOCAL_CSV", "true").lower() == "true"
+    USE_LOCAL_CSV         = str(get_cfg("USE_LOCAL_CSV", os.getenv("USE_LOCAL_CSV", "true"))).lower() == "true"

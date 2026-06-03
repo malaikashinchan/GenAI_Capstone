@@ -58,9 +58,14 @@ def generate_customers(n: int, batch_id: str) -> pd.DataFrame:
     ids = [str(uuid.uuid4()) for _ in range(n)]
     uid = [str(uuid.uuid4()) for _ in range(n)]
 
+    emails = [f"customer_{random.randint(10000, 99999)}@olist.com.br" for _ in range(n)]
+    phones = [f"+55-11-9{random.randint(10000000, 99999999)}" for _ in range(n)]
+
     df = pd.DataFrame({
         "customer_id":              ids,
         "customer_unique_id":       uid,
+        "customer_email":           emails,
+        "customer_phone":           phones,
         "customer_zip_code_prefix": np.random.randint(1000, 99999, n),
         "customer_city":            np.random.choice(BR_CITIES, n),
         "customer_state":           np.random.choice(BR_STATES, n),

@@ -1,16 +1,42 @@
+# Environment variables
 .env
+.env.local
+.env.development
+.env.production
+.env.test
+
+# Secrets / profiles
+profiles/
+
+# Runtime files
+metadata/
+logs/
+*.log
+
+# Data and generated outputs
+data/
+outputs/
+
+# Python
 __pycache__/
 *.pyc
 *.pyo
-.pytest_cache/
-.DS_Store
-data/*.csv
-outputs/
-metadata/*.json
-logs/*.log
-logs/*.txt
-*.egg-info/
-dist/
-build/
+*.pyd
 .venv/
 venv/
+env/
+
+# Node
+node_modules/
+
+# Build outputs
+dist/
+build/
+.next/
+
+# IDE
+.vscode/
+.idea/
+
+# macOS
+.DS_Store

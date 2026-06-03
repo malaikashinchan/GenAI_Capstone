@@ -82,7 +82,7 @@ st.divider()
 st.markdown("### 📄 Audit Report Files")
 log_dir = Path("logs")
 if log_dir.exists():
-    logs = sorted(log_dir.glob("audit_*.txt"), reverse=True)[:10]
+    logs = sorted(log_dir.glob("audit_*.txt"), key=lambda x: x.stat().st_mtime, reverse=True)[:10]
     if logs:
         sel_log = st.selectbox("View log file:", [l.name for l in logs])
         log_path = log_dir / sel_log

@@ -44,6 +44,22 @@ class LLMClient:
                 self.provider = "openai"
                 self._init_openai()
 
+        elif self.provider == "ollama":
+            try:
+                from langchain_openai import ChatOpenAI
+                base_url = os.getenv("OLLAMA_API_BASE", "http://localhost:11434/v1")
+                if not base_url.endswith("/v1") and not base_url.endswith("/v1/"):
+                    base_url = base_url.rstrip("/") + "/v1"
+                self._client = ChatOpenAI(
+                    api_key="ollama",
+                    base_url=base_url,
+                    model=self.model or "llama3",
+                )
+                logger.info(f"LLM | Ollama ready (via OpenAI compat) | url={base_url} | model={self.model or 'llama3'}")
+            except ImportError:
+                logger.error("LLM | langchain-openai not installed — cannot run Ollama compatibility mode.")
+                raise
+
         else:
             self._init_openai()
 

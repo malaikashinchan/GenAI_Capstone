@@ -32,7 +32,12 @@ import pandas as pd
 from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+if os.path.exists(".env"):
+    load_dotenv(".env")
+elif os.path.exists(".env.example"):
+    load_dotenv(".env.example")
+else:
+    load_dotenv()
 
 # ── ANSI colour helpers ───────────────────────────────────────────
 R = "\033[0m";  BOLD = "\033[1m";   DIM  = "\033[2m"
@@ -436,7 +441,7 @@ def main():
     parser.add_argument("--once",     action="store_true",              help="Run one batch and exit")
     parser.add_argument("--loop",     action="store_true",              help="Loop indefinitely")
     parser.add_argument("--datasets", nargs="+",
-                        default=["customers"],
+                        default=["customers", "orders", "payments", "products"],
                         choices=["customers","orders","payments","products"],
                         help="Datasets to cycle through")
     args = parser.parse_args()
