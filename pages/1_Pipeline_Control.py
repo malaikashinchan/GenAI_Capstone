@@ -2,6 +2,7 @@
 import os, subprocess, json, time
 import signal
 import psutil
+import sys
 import streamlit as st
 from pathlib import Path
 from dotenv import load_dotenv
@@ -104,7 +105,7 @@ col1, col2, col3 = st.columns(3)
 with col1:
     if st.button("📊 Generate Data Only", use_container_width=True, type="secondary"):
         with st.spinner("Generating data..."):
-            result = subprocess.run(["python3", "generate_data.py", "--rows", str(rows)],
+            result = subprocess.run([sys.executable, "generate_data.py", "--rows", str(rows)],
                                      capture_output=True, text=True, cwd=os.getcwd(), timeout=60)
             if result.returncode == 0:
                 st.success("✅ Data generated and pushed to Snowflake!")
@@ -119,9 +120,9 @@ with col2:
         else:
             # If Single Batch, run exactly enough batches to cover the selected datasets once.
             if mode == "Single Batch":
-                cmd = ["python3", "run_continuous.py", "--batches", str(len(ds_sel))]
+                cmd = [sys.executable, "run_continuous.py", "--batches", str(len(ds_sel))]
             else:
-                cmd = ["python3", "run_continuous.py", "--loop"]
+                cmd = [sys.executable, "run_continuous.py", "--loop"]
             
             cmd.extend(["--rows", str(rows), "--interval", str(interval), "--datasets"] + ds_sel)
             
