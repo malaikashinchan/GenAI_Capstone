@@ -77,11 +77,12 @@ st.caption("Browse raw, clean, masked, and gold tables from Snowflake OR Local C
 def get_sf():
     try:
         import snowflake.connector
+        from config.settings import SnowflakeConfig
         return snowflake.connector.connect(
-            account=os.getenv("SNOWFLAKE_ACCOUNT"), user=os.getenv("SNOWFLAKE_USER"),
-            password=os.getenv("SNOWFLAKE_PASSWORD"), warehouse=os.getenv("SNOWFLAKE_WAREHOUSE", "COMPUTE_WH"),
-            database=os.getenv("SNOWFLAKE_DATABASE", "MY_DB"), schema=os.getenv("SNOWFLAKE_SCHEMA", "PUBLIC"),
-            role=os.getenv("SNOWFLAKE_ROLE", "SYSADMIN"))
+            account=SnowflakeConfig.ACCOUNT, user=SnowflakeConfig.USER,
+            password=SnowflakeConfig.PASSWORD, warehouse=SnowflakeConfig.WAREHOUSE,
+            database=SnowflakeConfig.DATABASE, schema=SnowflakeConfig.SCHEMA,
+            role=SnowflakeConfig.ROLE)
     except:
         return None
 
