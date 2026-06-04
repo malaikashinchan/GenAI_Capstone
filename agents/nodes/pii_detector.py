@@ -129,14 +129,13 @@ def run(state: AgentState) -> AgentState:
 
             raw = llm_client.invoke(prompt).strip()
             
-            # Robustly extract JSON block if the LLM adds text before/after
-            if "```json" in raw:
-                raw = raw.split("```json")[1].split("```")[0]
-            elif "```" in raw:
-                raw = raw.split("```")[1].split("```")[0]
+            # Robustly extract JSON block using regex
+            import re
+            match = re.search(r'\{.*\}', raw, re.DOTALL)
+            if match:
+                raw = match.group(0)
                 
             raw = raw.strip()
-
             llm_map = json.loads(raw)
             for k, v in llm_map.items():
                 if k in unclassified_schema:

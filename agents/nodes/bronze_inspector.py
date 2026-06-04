@@ -101,14 +101,13 @@ def run(state: AgentState) -> AgentState:
 
         raw = llm_client.invoke(prompt).strip()
         
-        # Robustly extract JSON block if the LLM adds text before/after
-        if "```json" in raw:
-            raw = raw.split("```json")[1].split("```")[0]
-        elif "```" in raw:
-            raw = raw.split("```")[1].split("```")[0]
+        # Robustly extract JSON block using regex to handle any LLM conversational text
+        import re
+        match = re.search(r'\{.*\}', raw, re.DOTALL)
+        if match:
+            raw = match.group(0)
             
         raw = raw.strip()
-
         report = json.loads(raw)
         issues = report.get("issues_found", [])
         clean  = report.get("columns_look_clean", [])
