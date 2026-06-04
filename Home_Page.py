@@ -530,7 +530,7 @@ if Path("metadata/pipeline_live_state.json").exists():
 
 # ── Top KPIs Rows ─────────────────────────────────────────────────
 latest_run = hist[-1] if hist else {}
-k1, k2, k3, k4, k5, k6 = st.columns(6)
+k1, k2, k3, k4, k5, k6, k7 = st.columns(7)
 
 with k1:
     st.markdown(f"""<div class="metric-card"><div class="val purple">{len(hist)}</div><div class="lbl">Batches</div></div>""", unsafe_allow_html=True)
@@ -541,8 +541,10 @@ with k3:
 with k4:
     st.markdown(f"""<div class="metric-card"><div class="val rose">{latest_run.get('quarantine', 0):,}</div><div class="lbl">Quarantine</div></div>""", unsafe_allow_html=True)
 with k5:
-    st.markdown(f"""<div class="metric-card"><div class="val amber">{latest_run.get('heals', 0)}</div><div class="lbl">Self Heals</div></div>""", unsafe_allow_html=True)
+    st.markdown(f"""<div class="metric-card"><div class="val text-gray-400">{latest_run.get('duplicates', 0):,}</div><div class="lbl">Duplicates</div></div>""", unsafe_allow_html=True)
 with k6:
+    st.markdown(f"""<div class="metric-card"><div class="val amber">{latest_run.get('heals', 0)}</div><div class="lbl">Self Heals</div></div>""", unsafe_allow_html=True)
+with k7:
     status_class = "chip-run" if is_running else ("chip-ok" if latest_run.get('status') == "SUCCESS" else "chip-fail")
     status_label = "RUNNING" if is_running else latest_run.get('status', 'IDLE')
     st.markdown(f"""<div class="metric-card"><div class="val"><span class="chip {status_class}">{status_label}</span></div><div class="lbl">Engine State</div></div>""",

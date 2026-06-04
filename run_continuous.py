@@ -291,10 +291,16 @@ def print_results(state: dict, duration: float):
 
     # Metrics
     print(f"\n  {CY}📊 LAYER METRICS:{R}")
-    print(f"     🟤 Bronze raw rows   : {YL}{state.get('row_count',0):,}{R}")
-    print(f"     ⚪ Silver clean rows  : {GR}{state.get('clean_row_count',0):,}{R}")
-    print(f"     ⚠  Quarantined rows  : {RD}{state.get('quarantine_count',0):,}{R}")
-    print(f"     🔒 Masked rows       : {CY}{state.get('masked_row_count',0):,}{R}")
+    raw_count        = state.get('row_count', 0)
+    clean_count      = state.get('clean_row_count', 0)
+    quarantine_count = state.get('quarantine_count', 0)
+    dup_count        = state.get('duplicates_dropped', 0)
+    masked_count     = state.get('masked_row_count', 0)
+    print(f"     🟤 Bronze raw rows   : {raw_count:,}")
+    print(f"     ⚪ Silver clean rows  : {clean_count:,}")
+    print(f"     ⚠  Quarantined rows  : {quarantine_count:,}")
+    print(f"     🗑  Duplicates dropped: {dup_count:,}")
+    print(f"     🔒 Masked rows       : {masked_count:,}")
 
     # Gold KPIs
     kpis = state.get("gold_kpis", {})
@@ -400,6 +406,7 @@ def run_one_batch(dataset: str, n_rows: int, batch_id: str, batch_num: int) -> d
         "ge_rules":            [], "llm_retry_strict": False,
         "validation_passed":   False, "failed_checks": [],
         "clean_row_count":     0, "quarantine_count": 0,
+        "duplicates_dropped":  0,
         "fix_sql": "", "clean_df_path": "", "quarantine_df_path": "",
         "masked_table": "", "masked_row_count": 0, "masked_df_path": "", "masking_log": [],
         "gold_kpis":           {}, "gold_df_path": "",
@@ -439,6 +446,7 @@ def run_one_batch(dataset: str, n_rows: int, batch_id: str, batch_num: int) -> d
         "raw_rows":      final.get("row_count", 0),
         "clean_rows":    final.get("clean_row_count", 0),
         "quarantine":    final.get("quarantine_count", 0),
+        "duplicates":    final.get("duplicates_dropped", 0),
         "masked_rows":   final.get("masked_row_count", 0),
         "heals":         len(final.get("heal_log", [])),
         "bronze_issues": len(final.get("bronze_issues", [])),

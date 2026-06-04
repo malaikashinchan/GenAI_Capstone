@@ -63,7 +63,7 @@ def _build_clean_mask(df: pd.DataFrame, ge_rules: list) -> pd.Series:
     return mask
 
 
-def _apply_olist_healing(df: pd.DataFrame, dataset: str) -> pd.DataFrame:
+def _apply_olist_healing(df: pd.DataFrame, dataset: str):
     """
     Apply dataset-specific basic healing before splitting.
     This covers the healer.py logic from the original project,
@@ -73,13 +73,17 @@ def _apply_olist_healing(df: pd.DataFrame, dataset: str) -> pd.DataFrame:
 
     # Remove full duplicates
     before = len(df)
-    if "customer_id" in df.columns:
+    # Remove full duplicates based strictly on the dataset's primary key
+    before = len(df)
+    if dataset == "customers" and "customer_id" in df.columns:
         df = df.drop_duplicates(subset=["customer_id"])
-    elif "order_id" in df.columns:
+    elif dataset == "orders" and "order_id" in df.columns:
         df = df.drop_duplicates(subset=["order_id"])
-    elif "product_id" in df.columns:
+    elif dataset == "products" and "product_id" in df.columns:
         df = df.drop_duplicates(subset=["product_id"])
     else:
+        # For payments, order_id is a foreign key. A single order can have multiple payments.
+        # So we only drop EXACT identical rows, not just identical order_ids.
         df = df.drop_duplicates()
     removed = before - len(df)
     if removed:
@@ -119,7 +123,12 @@ def _apply_olist_healing(df: pd.DataFrame, dataset: str) -> pd.DataFrame:
         if numeric_col in df.columns:
             df[numeric_col] = pd.to_numeric(df[numeric_col], errors="coerce").fillna(0.0)
 
-    return df
+    if "product_category_name" in df.columns:
+        df["product_category_name"] = df["product_category_name"].fillna("UNKNOWN")
+        df["product_name_lenght"]   = df["product_name_lenght"].fillna(0)
+        df["product_description_lenght"] = df["product_description_lenght"].fillna(0)
+
+    return df, removed
 
 
 def run(state: AgentState) -> AgentState:
@@ -150,7 +159,7 @@ def run(state: AgentState) -> AgentState:
 
         # 2. Apply basic dataset-specific healing ONLY to the clean rows
         # This prevents the healing function from "hiding" nulls from the quarantine filter
-        clean_df = _apply_olist_healing(clean_df, dataset)
+        clean_df, duplicates_dropped = _apply_olist_healing(clean_df, dataset)
 
         clean_count      = len(clean_df)
         quarantine_count = len(quarantine_df)
@@ -179,6 +188,7 @@ def run(state: AgentState) -> AgentState:
 
         state["clean_row_count"]    = clean_count
         state["quarantine_count"]   = quarantine_count
+        state["duplicates_dropped"] = duplicates_dropped
         state["clean_df_path"]      = clean_result.get("path", "")
         state["quarantine_df_path"] = f"outputs/bronze/BRONZE_{dataset.upper()}_QUARANTINE.csv"
 

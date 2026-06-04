@@ -50,6 +50,7 @@ class AgentState(TypedDict):
     # ── Node 6 — Transform ────────────────────────────────────────
     clean_row_count:     int          # rows written to Silver CLEAN
     quarantine_count:    int          # rows written to Bronze QUARANTINE
+    duplicates_dropped:  int          # duplicate rows removed
     fix_sql:             str          # fix code written by Heal Agent
     clean_df_path:       str          # path to saved clean CSV (Silver)
     quarantine_df_path:  str          # path to saved quarantine CSV
