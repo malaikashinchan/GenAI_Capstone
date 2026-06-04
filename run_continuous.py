@@ -79,14 +79,15 @@ def _bad_cats(s, bads, rate=0.03):
 # ── Snowflake connection ──────────────────────────────────────────
 def _get_conn():
     import snowflake.connector
+    from config.settings import SnowflakeConfig
     return snowflake.connector.connect(
-        account   = os.getenv("SNOWFLAKE_ACCOUNT"),
-        user      = os.getenv("SNOWFLAKE_USER"),
-        password  = os.getenv("SNOWFLAKE_PASSWORD"),
-        warehouse = os.getenv("SNOWFLAKE_WAREHOUSE","COMPUTE_WH"),
-        database  = os.getenv("SNOWFLAKE_DATABASE","MY_DB"),
-        schema    = os.getenv("SNOWFLAKE_SCHEMA","PUBLIC"),
-        role      = os.getenv("SNOWFLAKE_ROLE","SYSADMIN"),
+        account   = SnowflakeConfig.ACCOUNT,
+        user      = SnowflakeConfig.USER,
+        password  = SnowflakeConfig.PASSWORD,
+        warehouse = SnowflakeConfig.WAREHOUSE,
+        database  = SnowflakeConfig.DATABASE,
+        schema    = SnowflakeConfig.SCHEMA,
+        role      = SnowflakeConfig.ROLE,
     )
 
 def _write_to_snowflake(df: pd.DataFrame, table: str, conn) -> int:
