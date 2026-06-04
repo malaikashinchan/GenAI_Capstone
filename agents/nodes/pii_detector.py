@@ -128,10 +128,13 @@ def run(state: AgentState) -> AgentState:
             )
 
             raw = llm_client.invoke(prompt).strip()
-            if raw.startswith("```"):
-                raw = raw.split("```")[1]
-                if raw.startswith("json"):
-                    raw = raw[4:]
+            
+            # Robustly extract JSON block if the LLM adds text before/after
+            if "```json" in raw:
+                raw = raw.split("```json")[1].split("```")[0]
+            elif "```" in raw:
+                raw = raw.split("```")[1].split("```")[0]
+                
             raw = raw.strip()
 
             llm_map = json.loads(raw)
