@@ -130,7 +130,6 @@ def run(state: AgentState) -> AgentState:
             raw = llm_client.invoke(prompt).strip()
             
             # Robustly extract JSON block using regex
-            import re
             match = re.search(r'\{.*\}', raw, re.DOTALL)
             if match:
                 raw = match.group(0)

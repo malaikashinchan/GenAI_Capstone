@@ -102,7 +102,6 @@ def run(state: AgentState) -> AgentState:
         raw = llm_client.invoke(prompt).strip()
         
         # Robustly extract JSON block using regex to handle any LLM conversational text
-        import re
         match = re.search(r'\{.*\}', raw, re.DOTALL)
         if match:
             raw = match.group(0)
