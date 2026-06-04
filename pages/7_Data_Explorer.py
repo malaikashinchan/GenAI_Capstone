@@ -5,7 +5,7 @@ import pandas as pd
 from dotenv import load_dotenv
 load_dotenv()
 
-st.set_page_config(page_title="Data Explorer", page_icon="🔍", layout="wide")
+st.set_page_config(page_title="Data Explorer", layout="wide")
 import streamlit as st
 if "username" not in st.session_state:
     st.warning("Please log in on the main page.")
@@ -77,7 +77,7 @@ label { font-size: .85rem !important; font-weight: 600 !important; color: #94a3b
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("# 🔍 Data Explorer")
+st.markdown("# Data Explorer")
 st.caption("Browse raw, clean, masked, and gold tables from Snowflake OR Local CSVs")
 
 @st.cache_resource(ttl=30)
@@ -224,7 +224,7 @@ if not df.empty:
 
 
     # Data table
-    st.markdown('<div class="sec-title">📊 Data Preview</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sec-title"> Data Preview</div>', unsafe_allow_html=True)
     st.dataframe(df, use_container_width=True, height=420)
 
     # Download

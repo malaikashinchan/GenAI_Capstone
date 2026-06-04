@@ -13,15 +13,15 @@ active_prof = st.session_state.get("active_profile", "Default")
 active_prof_key = f"{username}_{active_prof}"
 
 
-st.set_page_config(page_title="Audit & Logs", page_icon="📋", layout="wide")
-st.markdown("# 📋 Audit & Logs Panel")
+st.set_page_config(page_title="Audit & Logs", layout="wide")
+st.markdown("# Audit & Logs Panel")
 st.caption("Run history, heal logs, error summaries, full observability")
 
 hist = json.load(open(f"metadata/batch_history_{active_prof_key}.json")) if Path(f"metadata/batch_history_{active_prof_key}.json").exists() else []
 if not hist: st.info("No data yet."); st.stop()
 
 # ── Run History Table ───────────────────────────────────────────
-st.markdown("### 📦 Run History")
+st.markdown("### Run History")
 hdf = pd.DataFrame(hist)
 display_cols = [c for c in ["batch_id","timestamp","dataset","status","raw_rows","clean_rows","masked_rows","heals","schema_drifts","bronze_issues","duration_s"] if c in hdf.columns]
 st.dataframe(hdf[display_cols], use_container_width=True, hide_index=True)
@@ -31,7 +31,7 @@ st.divider()
 c1,c2 = st.columns(2)
 
 with c1:
-    st.markdown("### ✅ Status Distribution")
+    st.markdown("### Status Distribution")
     status_counts = hdf["status"].value_counts()
     fig = px.pie(values=status_counts.values, names=status_counts.index,
                  color=status_counts.index,
@@ -42,7 +42,7 @@ with c1:
     st.plotly_chart(fig, use_container_width=True)
 
 with c2:
-    st.markdown("### ⏱️ Duration Trend")
+    st.markdown("### Duration Trend")
     hdf["label"] = [f"#{i+1}" for i in range(len(hdf))]
     colors = ["#34d399" if s=="SUCCESS" else "#fb7185" for s in hdf["status"]]
     fig2 = px.bar(hdf, x="label", y="duration_s", color="status",
@@ -54,7 +54,7 @@ with c2:
 
 # ── Heal Log Detail ─────────────────────────────────────────────
 st.divider()
-st.markdown("### 🔧 Heal Agent Log (All Batches)")
+st.markdown("### Heal Agent Log (All Batches)")
 all_heals = []
 for i,b in enumerate(hist):
     for h in b.get("heal_log",[]):
@@ -73,7 +73,7 @@ else:
 
 # ── Error Summary ───────────────────────────────────────────────
 st.divider()
-st.markdown("### 🚨 Error Summary")
+st.markdown("### Error Summary")
 if all_heals:
     edf = pd.DataFrame(all_heals)
     error_counts = edf["Error Type"].value_counts()
@@ -87,7 +87,7 @@ if all_heals:
 
 # ── Log Files ───────────────────────────────────────────────────
 st.divider()
-st.markdown("### 📄 Audit Report Files")
+st.markdown("### Audit Report Files")
 log_dir = Path("logs")
 if log_dir.exists():
     logs = sorted(log_dir.glob("audit_*.txt"), key=lambda x: x.stat().st_mtime, reverse=True)[:10]

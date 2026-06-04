@@ -17,7 +17,7 @@ active_prof_key = f"{username}_{active_prof}"
 load_dotenv()
 
 st.set_page_config(page_title="Governance & PII", page_icon="🔐", layout="wide")
-st.markdown("# 🔐 Governance & PII Monitoring")
+st.markdown("# Governance & PII Monitoring")
 st.caption("PII detection, masking audit, data classification, governance compliance")
 
 hist = json.load(open(f"metadata/batch_history_{active_prof_key}.json")) if Path(f"metadata/batch_history_{active_prof_key}.json").exists() else []
@@ -45,7 +45,7 @@ st.divider()
 col1, col2 = st.columns(2)
 
 with col1:
-    st.markdown("### 📊 Data Classification")
+    st.markdown("### Data Classification")
     class_data = {"RESTRICTED (HIGH PII)": len(high), "CONFIDENTIAL (MEDIUM)": len(med),
                   "INTERNAL (LOW)": len(low), "PUBLIC (NONE)": len(none)}
     fig = px.pie(values=list(class_data.values()), names=list(class_data.keys()),
@@ -57,7 +57,7 @@ with col1:
     st.plotly_chart(fig, use_container_width=True)
 
 with col2:
-    st.markdown("### 🔒 Masking Actions")
+    st.markdown("### Masking Actions")
     if masking:
         actions = {}
         for m in masking:
@@ -73,7 +73,7 @@ with col2:
 
 # ── PII Detail Table ────────────────────────────────────────────
 st.divider()
-st.markdown("### 📋 PII Column Details")
+st.markdown("### PII Column Details")
 if masking:
     rows = []
     for m in masking:
@@ -90,7 +90,7 @@ if masking:
 
 # ── Governance Compliance ───────────────────────────────────────
 st.divider()
-st.markdown("### ✅ Governance Compliance")
+st.markdown("### Governance Compliance")
 total_cols = len(masking) if masking else 1
 pii_detected = len(high) + len(med)
 masked_count = len([m for m in masking if m.get("action") in ("SHA256","PARTIAL_MASK")])

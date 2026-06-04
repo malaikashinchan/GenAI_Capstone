@@ -1,6 +1,6 @@
 """
 streamlit_app.py — Unified Operations Command Center
-Olist LLM Data Pipeline — Enterprise Dashboard
+LLM Data Pipeline — Enterprise Dashboard
 """
 import os
 import sys
@@ -427,7 +427,7 @@ def render_live_pipeline_graph(active_node, node_states):
 
     </body></html>
     """
-    components.html(html_code, height=280, scrolling=False)
+    components.html(html_code, height=280, scrolling=True)
 
 
 
@@ -548,65 +548,65 @@ with k6:
     st.markdown(f"""<div class="metric-card"><div class="val"><span class="chip {status_class}">{status_label}</span></div><div class="lbl">Engine State</div></div>""",
                 unsafe_allow_html=True)
 
-# ── Main Control Dashboard Columns ───────────────────────────────
-col_left, col_right = st.columns([7, 5])
+# ── Main Control Dashboard ───────────────────────────────
+st.markdown("### Dynamic Pipeline Operations Flow")
+active_n = live_state.get("active_node", "") if is_running else ""
+node_sts = live_state.get("nodes", {}) if is_running else {}
+render_live_pipeline_graph(active_n, node_sts)
 
-with col_left:
-    st.markdown("### 📊 Dynamic Pipeline Operations Flow")
-    active_n = live_state.get("active_node", "") if is_running else ""
-    node_sts = live_state.get("nodes", {}) if is_running else {}
-    render_live_pipeline_graph(active_n, node_sts)
+st.divider()
+st.markdown("### Control Panel")
+with st.expander("Trigger Agentic Run", expanded=False):
+    upload_dir = Path("data/uploads")
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    custom_datasets = [f.stem for f in upload_dir.glob("*.csv")]
+    all_datasets = ["customers", "orders", "payments", "products"] + custom_datasets
 
-with col_right:
-    st.markdown("### 🎛️ Control Panel")
-    with st.expander("Trigger Agentic Run", expanded=False):
-        upload_dir = Path("data/uploads")
-        upload_dir.mkdir(parents=True, exist_ok=True)
-        custom_datasets = [f.stem for f in upload_dir.glob("*.csv")]
-        all_datasets = ["customers", "orders", "payments", "products"] + custom_datasets
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        c_dataset = st.selectbox("Dataset", all_datasets)
+    c_rows = st.slider("Batch Size", 100, 1000, 200, 50)
 
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            c_dataset = st.selectbox("Dataset", all_datasets)
-        c_rows = st.slider("Batch Size", 100, 1000, 200, 50)
-
-    btn1, btn2 = st.columns(2)
-    with btn1:
-        if st.button("🚀 Trigger Agentic Run", use_container_width=True, type="primary", disabled=is_running):
-            # Clean up old state
-            if Path("metadata/pipeline_live_state.json").exists():
-                try:
-                    os.remove("metadata/pipeline_live_state.json")
-                except:
-                    pass
-            env = os.environ.copy()
-            env["ACTIVE_PROFILE_NAME"] = f"{username}_{selected_profile}"
-        
-            # Scope the log file to this specific user+profile
-            log_path = f"metadata/live_run_{username}_{selected_profile}.log"
-            with open(log_path, "w") as log_f:
-                proc = subprocess.Popen(
-                    [sys.executable, "run_continuous.py", "--once", "--rows", str(c_rows), "--datasets", c_dataset],
-                    env=env,
-                    stdout=log_f,
-                    stderr=log_f,
-                    cwd=os.getcwd()
-                )
-            st.session_state["pipeline_process_pid"] = proc.pid
-            st.rerun()
-
-    with btn2:
-        if st.button("🛑 Emergency Stop", use_container_width=True, type="secondary", disabled=not is_running):
+btn1, btn2 = st.columns(2)
+with btn1:
+    if st.button(" Trigger Agentic Run", use_container_width=True, type="primary", disabled=is_running):
+        # Clean up old state
+        if Path("metadata/pipeline_live_state.json").exists():
             try:
-                os.kill(running_pid, signal.SIGTERM)
-                st.session_state["pipeline_process_pid"] = None
-                st.warning("🚨 Pipeline process terminated.")
-                st.rerun()
+                os.remove("metadata/pipeline_live_state.json")
             except:
                 pass
+        env = os.environ.copy()
+        env["ACTIVE_PROFILE_NAME"] = f"{username}_{selected_profile}"
+    
+        # Scope the log file to this specific user+profile
+        log_path = f"metadata/live_run_{username}_{selected_profile}.log"
+        with open(log_path, "w") as log_f:
+            proc = subprocess.Popen(
+                [sys.executable, "run_continuous.py", "--once", "--rows", str(c_rows), "--datasets", c_dataset],
+                env=env,
+                stdout=log_f,
+                stderr=log_f,
+                cwd=os.getcwd()
+            )
+        st.session_state["pipeline_process_pid"] = proc.pid
+        st.rerun()
+
+with btn2:
+    if st.button("🛑 Emergency Stop", use_container_width=True, type="secondary", disabled=not is_running):
+        try:
+            pid = st.session_state["pipeline_process_pid"]
+            parent = psutil.Process(pid)
+            for child in parent.children(recursive=True):
+                child.terminate()
+            parent.terminate()
+        except:
+            pass
+        st.session_state["pipeline_process_pid"] = None
+        st.rerun()
 
 # ── Dynamic Scrolling Command Terminal ─────────────────────────────
-st.markdown("### 📋 Live Agent Communication Streams")
+st.markdown("### Live Agent Communication Streams")
 st.markdown("""
 <div class="terminal-header">
   <div class="terminal-dot term-red"></div>
@@ -634,15 +634,15 @@ else:
 
 # ── Analytical Tabs (Unified tabs instead of fragmented pages) ─────
 st.divider()
-st.markdown("### 🔍 Detail Intelligence Workspace")
+st.markdown("### Detail Intelligence Workspace")
 
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-    "📈 Performance Analytics",
-    "🛡️ PII Governance",
-    "🌊 Schema Evolution",
-    "🔧 Self-Healing Audit",
-    "📋 Raw Run History",
-    "🔍 Snowflake Explorer"
+    "Performance Analytics",
+    "PII Governance",
+    "Schema Evolution",
+    "Self-Healing Audit",
+    "Raw Run History",
+    "Snowflake Explorer"
 ])
 
 with tab1:

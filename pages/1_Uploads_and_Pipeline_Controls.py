@@ -71,7 +71,7 @@ html, body, p, h1, h2, h3, h4, h5, h6, a, button, input, select, textarea { font
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("# 🎛️ Uploads & Pipeline Controls")
+st.markdown("# Uploads & Pipeline Controls")
 st.caption("Generate data, trigger pipeline runs, control batch parameters")
 
 # ── Controls ────────────────────────────────────────────────────
@@ -111,7 +111,7 @@ st.divider()
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    if st.button("📊 Generate Data Only", use_container_width=True, type="secondary"):
+    if st.button(" Generate Data Only", use_container_width=True, type="secondary"):
         with st.spinner("Generating data..."):
             env = os.environ.copy()
             env["ACTIVE_PROFILE_NAME"] = active_prof_key
@@ -124,7 +124,7 @@ with col1:
                 st.error(f"❌ Error: {result.stderr[-300:]}")
 
 with col2:
-    if st.button("🚀 Run Full Pipeline", use_container_width=True, type="primary"):
+    if st.button(" Run Full Pipeline", use_container_width=True, type="primary"):
         if not ds_sel:
             st.error("Please select at least one dataset to process.")
         else:
@@ -177,7 +177,7 @@ sf_sch   = _get_active_cfg("SNOWFLAKE_SCHEMA")
 sf_wh    = _get_active_cfg("SNOWFLAKE_WAREHOUSE")
 sf_role  = _get_active_cfg("SNOWFLAKE_ROLE")
 
-st.markdown('<div class="sec-title">⚙️ Current Configuration <span>active environment variables</span></div>',
+st.markdown('<div class="sec-title"> Current Configuration <span>active environment variables</span></div>',
             unsafe_allow_html=True)
 st.markdown(f"""
 <div class="cfg-grid">
@@ -209,7 +209,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ── Recent Batches ──────────────────────────────────────────────
-st.markdown('<div class="sec-title">📦 Recent Batches <span>last 10 runs</span></div>',
+st.markdown('<div class="sec-title"> Recent Batches <span>last 10 runs</span></div>',
             unsafe_allow_html=True)
 
 p = Path(f"metadata/batch_history_{active_prof_key}.json")

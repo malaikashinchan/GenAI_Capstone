@@ -14,7 +14,7 @@ active_prof_key = f"{username}_{active_prof}"
 
 
 st.set_page_config(page_title="Schema Evolution", page_icon="🌊", layout="wide")
-st.markdown("# 🌊 Schema Evolution Tracker")
+st.markdown("# Schema Evolution Tracker")
 st.caption("Track schema changes, column additions, type modifications across batches")
 
 hist = json.load(open(f"metadata/batch_history_{active_prof_key}.json")) if Path(f"metadata/batch_history_{active_prof_key}.json").exists() else []
@@ -38,7 +38,7 @@ c3.metric("🟡 MEDIUM Severity", len(med_d))
 # ── Drift Events Table ──────────────────────────────────────────
 st.divider()
 if drifts:
-    st.markdown("### 📋 Drift Events Detail")
+    st.markdown("### Drift Events Detail")
     rows = []
     for d in drifts:
         sev = d.get("severity","?")
@@ -53,7 +53,7 @@ if drifts:
     st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
     # ── Drift Type Distribution ─────────────────────────────────
-    st.markdown("### 📊 Drift Type Distribution")
+    st.markdown("### Drift Type Distribution")
     types = {}
     for d in drifts:
         t = d.get("drift_type","?")
@@ -70,7 +70,7 @@ else:
 
 # ── Drift Trend ─────────────────────────────────────────────────
 st.divider()
-st.markdown("### 📈 Schema Drift Trend Across Batches")
+st.markdown("### Schema Drift Trend Across Batches")
 hdf = pd.DataFrame(hist)
 hdf["label"] = [f"#{i+1}" for i in range(len(hdf))]
 fig2 = px.bar(hdf, x="label", y="schema_drifts", color="schema_drifts",

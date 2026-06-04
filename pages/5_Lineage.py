@@ -4,7 +4,7 @@ import streamlit.components.v1 as components
 import pandas as pd
 from pathlib import Path
 
-st.set_page_config(page_title="Lineage", page_icon="🔗", layout="wide")
+st.set_page_config(page_title="Lineage", layout="wide")
 import streamlit as st
 if "username" not in st.session_state:
     st.warning("Please log in on the main page.")
@@ -12,7 +12,7 @@ if "username" not in st.session_state:
 username = st.session_state["username"]
 active_prof = st.session_state.get("active_profile", "Default")
 active_prof_key = f"{username}_{active_prof}"
-st.markdown("# 🔗 Data Lineage Visualization")
+st.markdown("# Data Lineage Visualization")
 st.caption("Trace data flow from Bronze → Silver → Gold across pipeline nodes")
 
 hist = json.load(open(f"metadata/batch_history_{active_prof_key}.json")) if Path(f"metadata/batch_history_{active_prof_key}.json").exists() else []
@@ -38,7 +38,7 @@ def render_mermaid(code: str):
     )
 
 # ── Lineage Flow Diagram ───────────────────────────────────────
-st.markdown("### 🗺️ Table-Level Lineage")
+st.markdown("### Table-Level Lineage")
 raw = sel.get("raw_rows",0); clean = sel.get("clean_rows",0); masked = sel.get("masked_rows",0)
 
 dataset_up = sel.get("dataset", "customers").upper()
@@ -63,7 +63,7 @@ render_mermaid(lineage_code)
 
 # ── Column-Level Lineage ───────────────────────────────────────
 st.divider()
-st.markdown("### 📊 Column-Level Transformations")
+st.markdown("### Column-Level Transformations")
 
 mlog = sel.get("masking_log", [])
 if mlog:
@@ -82,7 +82,7 @@ else:
 
 # ── Node Pipeline Lineage ──────────────────────────────────────
 st.divider()
-st.markdown("### 🔄 Node Execution Lineage")
+st.markdown("### Node Execution Lineage")
 ns = sel.get("node_status",{})
 nodes = ["profile","bronze_inspector","schema_drift","pii_detector","rule_gen","validator","transform","pii_masker","gold_kpi","lineage_tracker","audit_writer"]
 node_data = []

@@ -17,7 +17,7 @@ active_prof_key = f"{username}_{active_prof}"
 load_dotenv()
 
 st.set_page_config(page_title="Quality KPIs", page_icon="📊", layout="wide")
-st.markdown("# 📊 Data Quality KPIs")
+st.markdown("# Data Quality KPIs")
 st.caption("Validation pass rates, null analysis, healing success, quarantine metrics")
 
 hist = json.load(open(f"metadata/batch_history_{active_prof_key}.json")) if Path(f"metadata/batch_history_{active_prof_key}.json").exists() else []
@@ -65,7 +65,7 @@ k6.metric("Heal Events", sel.get("heals",0))
 
 # ── Null Analysis ───────────────────────────────────────────────
 st.divider()
-st.markdown("### 📉 Quality Trends Across Batches")
+st.markdown("### Quality Trends Across Batches")
 hdf = pd.DataFrame(hist)
 hdf["label"] = [f"#{i+1}" for i in range(len(hdf))]
 hdf["pass_pct"] = (hdf["clean_rows"] / hdf["raw_rows"].replace(0,1) * 100).round(1)
