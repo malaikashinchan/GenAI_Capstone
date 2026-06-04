@@ -185,12 +185,14 @@ if st.session_state["_show_settings"]:
         sf_db   = st.text_input("Database",           prof_data.get("SNOWFLAKE_DATABASE", "MY_DB"),   disabled=local_csv, key="sf_db")
         sf_sch  = st.text_input("Schema",             prof_data.get("SNOWFLAKE_SCHEMA",   "PUBLIC"),  disabled=local_csv, key="sf_sch")
         sf_wh   = st.text_input("Warehouse",          prof_data.get("SNOWFLAKE_WAREHOUSE","COMPUTE_WH"), disabled=local_csv, key="sf_wh")
+        sf_role = st.text_input("Role",               prof_data.get("SNOWFLAKE_ROLE",     "SYSADMIN"), disabled=local_csv, key="sf_role")
         if st.button("Save Profile", use_container_width=True, type="primary", key="btn_save_prof"):
             profiles[selected_profile] = {
                 "LLM_PROVIDER": prov, "LLM_MODEL": model, "GROQ_API_KEY": gkey,
                 "SNOWFLAKE_ACCOUNT": sf_acc, "SNOWFLAKE_USER": sf_user,
                 "SNOWFLAKE_PASSWORD": sf_pass, "SNOWFLAKE_DATABASE": sf_db,
                 "SNOWFLAKE_SCHEMA": sf_sch, "SNOWFLAKE_WAREHOUSE": sf_wh,
+                "SNOWFLAKE_ROLE": sf_role,
                 "USE_LOCAL_CSV": "true" if local_csv else "false"
             }
             save_profiles(profiles)
