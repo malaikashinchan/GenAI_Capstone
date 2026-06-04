@@ -8,7 +8,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 import streamlit as st
 if "username" not in st.session_state:
-    st.warning("Please log in on the main page.")
+    st.warning("Please log in on the home page.")
     st.stop()
 username = st.session_state["username"]
 active_prof = st.session_state.get("active_profile", "Default")

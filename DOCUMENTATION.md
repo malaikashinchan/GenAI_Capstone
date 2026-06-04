@@ -279,7 +279,7 @@ GEN_AI_Capstone-2/
 │   └── logger.py                   # Loguru configuration
 ├── generate_data.py                # Data generator: 4 datasets → Snowflake
 ├── run_continuous.py               # Main entry: continuous generate + pipeline loop
-├── streamlit_app.py                # Dashboard: per-agent inspection + batch history
+├── Home_Page.py                # Dashboard: per-agent inspection + batch history
 ├── setup_snowflake.py              # One-time Snowflake schema setup
 ├── metadata/
 │   └── batch_history.json          # Per-batch detailed results
@@ -378,7 +378,7 @@ The PII Detector prompts the LLM to classify every column:
 
 ## 11. Dashboard
 
-### Streamlit Dashboard (`streamlit_app.py`)
+### Streamlit Dashboard (`Home_Page.py`)
 
 The dashboard provides **per-agent inspection** for every batch:
 
@@ -454,7 +454,7 @@ python3 run_continuous.py --loop --rows 200 --interval 45
 python3 generate_data.py --rows 500
 
 # Start dashboard
-streamlit run streamlit_app.py --server.port 8501
+streamlit run Home_Page.py --server.port 8501
 ```
 
 ### CLI Flags

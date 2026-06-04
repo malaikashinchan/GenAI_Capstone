@@ -32,7 +32,7 @@ elif os.path.exists(".env.example"):
 else:
     load_dotenv()
 
-st.set_page_config(page_title="Olist Operations Center", page_icon="🔮", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Home Page", page_icon="🔮", layout="wide", initial_sidebar_state="expanded")
 
 # ── Authentication System ────────────────────────────────────────
 if "username" not in st.session_state:
@@ -549,12 +549,13 @@ with k6:
                 unsafe_allow_html=True)
 
 # ── Main Control Dashboard ───────────────────────────────
+st.markdown("<br><br>", unsafe_allow_html=True)
 st.markdown("### Dynamic Pipeline Operations Flow")
 active_n = live_state.get("active_node", "") if is_running else ""
 node_sts = live_state.get("nodes", {}) if is_running else {}
 render_live_pipeline_graph(active_n, node_sts)
 
-st.divider()
+st.markdown("<br>", unsafe_allow_html=True)
 st.markdown("### Control Panel")
 with st.expander("Trigger Agentic Run", expanded=False):
     upload_dir = Path("data/uploads")

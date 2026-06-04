@@ -56,7 +56,7 @@ python3 run_continuous.py --once --rows 200
 python3 run_continuous.py --loop --rows 200 --interval 45
 
 # Start dashboard
-streamlit run streamlit_app.py
+streamlit run Home_Page.py
 ```
 
 ---
@@ -82,7 +82,7 @@ pipeline/graph.py — LangGraph StateGraph definition
 tools/            — LLM client + Snowflake MCP tool
 generate_data.py  — Data generator (4 datasets)
 run_continuous.py — Main entry point (loop)
-streamlit_app.py  — Dashboard
+Home_Page.py  — Dashboard
 ```
 
 📖 **Full documentation:** [DOCUMENTATION.md](DOCUMENTATION.md)
