@@ -186,7 +186,19 @@ def run(state: AgentState) -> AgentState:
                     table         = table,
                     failed_checks = json.dumps(failed_checks, indent=2),
                 )
-                fix_code = llm_client.invoke(prompt).strip()
+                
+                # HYBRID LLM ROUTING: Use the flagship 70B model ONLY for complex SQL generation
+                # This bypasses the Groq 429 rate limit issue on the 8B model pipeline flow
+                try:
+                    from langchain_groq import ChatGroq
+                    from config.settings import LLMConfig
+                    smart_client = ChatGroq(api_key=LLMConfig.API_KEY, model_name="llama-3.3-70b-versatile")
+                    fix_code = smart_client.invoke(prompt).content.strip()
+                    logger.info("HEAL AGENT | Used 70B model for SQL generation.")
+                except Exception as smart_err:
+                    logger.warning(f"HEAL AGENT | 70B model failed or rate limited, falling back to default: {smart_err}")
+                    fix_code = llm_client.invoke(prompt).strip()
+                    
                 # Remove markdown if LLM ignored instructions
                 fix_code = fix_code.replace("```sql", "").replace("```", "").strip()
                 logger.info(f"HEAL AGENT | LLM SQL fix: {fix_code[:120]}")
