@@ -32,7 +32,7 @@ def _norm_type(t: str) -> str:
     t = str(t).lower()
     if "int" in t:   return "INTEGER"
     if "float" in t: return "FLOAT"
-    if "object" in t or "str" in t: return "STRING"
+    if "object" in t or "str" in t or "char" in t: return "STRING"
     if "bool" in t: return "BOOLEAN"
     return t.upper()
 
