@@ -86,16 +86,16 @@ def generate_customers(n: int, batch_id: str) -> pd.DataFrame:
     # ── INJECT SCHEMA DRIFT DIRT (To test our Local ML Architecture!) ──
     # ~30% chance of schema drift occurring in a batch
     drift_roll = random.random()
-    if drift_roll < 0.25:
+    if drift_roll < 0.05:
         # Simulate RENAMED_COLUMN
         df.rename(columns={"customer_city": "client_city"}, inplace=True)
-    elif drift_roll < 0.50:
+    elif drift_roll < 0.10:
         # Simulate COLUMN_REMOVED
         df.drop(columns=["customer_zip_code_prefix"], inplace=True)
-    elif drift_roll < 0.75:
+    elif drift_roll < 0.15:
         # Simulate COLUMN_ADDED
         df["marketing_source"] = np.random.choice(["facebook", "google", "organic"], len(df))
-    else:
+    elif drift_roll < 0.20:
         # Simulate TYPE_CHANGED (Int to Float)
         df["customer_zip_code_prefix"] = df["customer_zip_code_prefix"].astype(float) + 0.5
 
