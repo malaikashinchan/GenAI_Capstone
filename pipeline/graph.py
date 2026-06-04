@@ -116,10 +116,10 @@ def build_pipeline():
     # ── Pipeline flow: Bronze → Silver → Gold ─────────────────────
     pipeline_order = [
         # BRONZE
-        ("profile",          "bronze_inspector"),
-        ("bronze_inspector", "schema_drift"),
-        ("schema_drift",     "pii_detector"),
-        ("pii_detector",     "rule_gen"),
+        ("profile",          "pii_detector"),
+        ("pii_detector",     "schema_drift"),
+        ("schema_drift",     "bronze_inspector"),
+        ("bronze_inspector", "rule_gen"),
         ("rule_gen",         "validator"),
         ("validator",        "transform"),
         # SILVER

@@ -249,9 +249,9 @@ def render_live_pipeline_graph(active_node, node_states):
     # Node definitions in order
     main_nodes = [
         ("profile",           "1", "Profile Loader",    "🗂️"),
-        ("bronze_inspector",  "2", "Bronze Inspector",  "🔍"),
+        ("pii_detector",      "2", "PII Detector",      "🔒"),
         ("schema_drift",      "3", "Schema Drift",      "📐"),
-        ("pii_detector",      "4", "PII Detector",      "🔒"),
+        ("bronze_inspector",  "4", "Bronze Inspector",  "🔍"),
         ("rule_gen",          "5", "Rule Generator",    "📋"),
         ("validator",         "6", "GE Validator",      "✅"),
         ("transform",         "7", "Transform",         "⚙️"),
@@ -442,7 +442,7 @@ def qry(sql):
 # ── Hero ──────────────────────────────────────────────────────────
 st.markdown("""
 <div class="hero">
-  <h1>🔮 Olist Operations Command Center</h1>
+  <h1>🔮  Operations Command Center</h1>
   <p>Autonomous Quality Healing & Lineage Engine · Llama 3.3 70B & Great Expectations</p>
 </div>
 """, unsafe_allow_html=True)

@@ -147,12 +147,22 @@ with col3:
         st.rerun()
 
 # ── Current Configuration ────────────────────────────────────────
-llm_prov = os.getenv("LLM_PROVIDER", "—")
-llm_mod  = os.getenv("LLM_MODEL", "—")
-sf_db    = os.getenv("SNOWFLAKE_DATABASE", "—")
-sf_sch   = os.getenv("SNOWFLAKE_SCHEMA", "—")
-sf_wh    = os.getenv("SNOWFLAKE_WAREHOUSE", "—")
-sf_role  = os.getenv("SNOWFLAKE_ROLE", "—")
+def _get_active_cfg(key, default="—"):
+    try:
+        import json
+        with open("metadata/active_profile.json") as f:
+            prof_name = json.load(f).get("active_profile")
+            with open(f"profiles/{prof_name}.json") as pf:
+                return json.load(pf).get(key, os.getenv(key, default))
+    except Exception:
+        return os.getenv(key, default)
+
+llm_prov = _get_active_cfg("LLM_PROVIDER")
+llm_mod  = _get_active_cfg("LLM_MODEL")
+sf_db    = _get_active_cfg("SNOWFLAKE_DATABASE")
+sf_sch   = _get_active_cfg("SNOWFLAKE_SCHEMA")
+sf_wh    = _get_active_cfg("SNOWFLAKE_WAREHOUSE")
+sf_role  = _get_active_cfg("SNOWFLAKE_ROLE")
 
 st.markdown('<div class="sec-title">⚙️ Current Configuration <span>active environment variables</span></div>',
             unsafe_allow_html=True)

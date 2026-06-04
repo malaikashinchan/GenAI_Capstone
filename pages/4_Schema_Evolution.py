@@ -40,6 +40,7 @@ if drifts:
             "Column": d.get("column_name","?"),
             "Expected": d.get("expected_type", "—"),
             "Actual": d.get("actual_type", "—"),
+            "Explanation": d.get("description", "—")
         })
     st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 

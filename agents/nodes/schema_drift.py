@@ -13,29 +13,7 @@ from tools.llm_client import llm_client
 from config.settings import PipelineConfig
 from loguru import logger
 
-# Known-good schemas for each Olist dataset
-KNOWN_SCHEMAS = {
-    "customers": {
-        "customer_id": "object", "customer_unique_id": "object",
-        "customer_zip_code_prefix": "int64", "customer_city": "object", "customer_state": "object",
-    },
-    "orders": {
-        "order_id": "object", "customer_id": "object", "order_status": "object",
-        "order_purchase_timestamp": "object", "order_approved_at": "object",
-        "order_delivered_carrier_date": "object", "order_delivered_customer_date": "object",
-        "order_estimated_delivery_date": "object",
-    },
-    "payments": {
-        "order_id": "object", "payment_sequential": "int64",
-        "payment_type": "object", "payment_installments": "int64", "payment_value": "float64",
-    },
-    "products": {
-        "product_id": "object", "product_category_name": "object",
-        "product_name_lenght": "float64", "product_description_lenght": "float64",
-        "product_photos_qty": "float64", "product_weight_g": "float64",
-        "product_length_cm": "float64", "product_height_cm": "float64", "product_width_cm": "float64",
-    },
-}
+
 
 RENAME_PROMPT = """
 You are a schema comparison expert.
@@ -52,10 +30,53 @@ No explanation. No markdown. Only JSON.
 
 def _norm_type(t: str) -> str:
     t = str(t).lower()
-    if "int" in t:   return "int"
-    if "float" in t: return "float"
-    if "object" in t or "str" in t: return "str"
-    return t
+    if "int" in t:   return "INTEGER"
+    if "float" in t: return "FLOAT"
+    if "object" in t or "str" in t: return "STRING"
+    if "bool" in t: return "BOOLEAN"
+    return t.upper()
+
+
+def _detect_semantic_type(col_name: str, values: list) -> str:
+    """Layer 3: Heuristic-based Smart Datatype Detection"""
+    import re
+    import pandas as pd
+    
+    col_lower = col_name.lower()
+    if any(k in col_lower for k in ['date', 'time', 'at', 'timestamp']):
+        return "TIMESTAMP"
+    if any(k in col_lower for k in ['email']):
+        return "EMAIL"
+    if any(k in col_lower for k in ['phone', 'tel']):
+        return "PHONE"
+    
+    # Try parsing sample values to determine if it's actually numeric or timestamp
+    if not values:
+        return "STRING"
+        
+    str_vals = [str(v) for v in values if pd.notna(v) and str(v).strip() != ""]
+    if not str_vals:
+        return "STRING"
+        
+    try:
+        pd.to_datetime(str_vals, format="%Y-%m-%d %H:%M:%S")
+        return "TIMESTAMP"
+    except (ValueError, TypeError):
+        pass
+        
+    try:
+        pd.to_datetime(str_vals)
+        return "TIMESTAMP"
+    except (ValueError, TypeError):
+        pass
+    
+    if all(re.match(r"^[0-9]+$", v) for v in str_vals):
+        return "INTEGER"
+        
+    if all(re.match(r"^[0-9.]+$", v) for v in str_vals):
+        return "FLOAT"
+        
+    return "STRING"
 
 
 def run(state: AgentState) -> AgentState:
@@ -63,74 +84,158 @@ def run(state: AgentState) -> AgentState:
     dataset  = state.get("dataset_name", PipelineConfig.ACTIVE_DATASET)
     run_id   = str(uuid.uuid4())[:8]
     incoming = state.get("schema", {})
-    expected = KNOWN_SCHEMAS.get(dataset, {})
+    sample_rows = state.get("sample_rows", [])
     events   = []
 
-    logger.info(f"SCHEMA_DRIFT | Starting | dataset={dataset} | run_id={run_id}")
+    logger.info(f"SCHEMA_DRIFT | Starting Local ML Mode | dataset={dataset} | run_id={run_id}")
 
+    # Dynamically load the previously known schema for ANY dataset (no hardcoding)
+    import os, json
+    schema_dir = "metadata/schemas"
+    os.makedirs(schema_dir, exist_ok=True)
+    schema_file = f"{schema_dir}/{dataset}_schema.json"
+    
+    expected = {}
+    if os.path.exists(schema_file):
+        try:
+            with open(schema_file, "r") as f:
+                expected = json.load(f)
+        except Exception:
+            pass
+
+    # If this is the first time seeing this dataset, save it as the new baseline and skip drift
     if not expected:
-        logger.info(f"SCHEMA_DRIFT | No known schema for {dataset}, skipping drift detection.")
+        logger.info(f"SCHEMA_DRIFT | First time processing '{dataset}'. Saving as new baseline schema.")
+        with open(schema_file, "w") as f:
+            json.dump(incoming, f, indent=2)
+            
         state["schema_drift_events"] = []
         state["schema_drift_run_id"] = run_id
         state["node_status"]["schema_drift"] = "pass"
         return state
 
-    try:
-        old_cols = set(expected.keys())
-        new_cols = set(incoming.keys())
-        now      = datetime.utcnow().isoformat()
+    old_cols = set(expected.keys())
+    new_cols = set(incoming.keys())
+    now      = datetime.utcnow().isoformat()
+    
+    removed = list(old_cols - new_cols)
+    added = list(new_cols - old_cols)
+    
+    renamed_map = {}
+    
+    # Layer 2: Semantic Rename Detection
+    if removed and added:
+        try:
+            from sentence_transformers import SentenceTransformer
+            from sentence_transformers.util import cos_sim
+            
+            # Using the fast, lightweight local model (downloads on first run if not present)
+            model = SentenceTransformer('all-MiniLM-L6-v2')
+            
+            old_emb = model.encode(removed)
+            new_emb = model.encode(added)
+            
+            sims = cos_sim(old_emb, new_emb)
+            
+            # Check for high similarity indicating a rename
+            for i, old_col in enumerate(removed):
+                for j, new_col in enumerate(added):
+                    if sims[i][j].item() > 0.65:
+                        renamed_map[old_col] = new_col
+                        logger.warning(f"SCHEMA_DRIFT | RENAMED_COLUMN | {old_col} -> {new_col} (Similarity: {sims[i][j].item():.2f})")
+                        events.append({
+                            "run_id": run_id, "dataset": dataset, 
+                            "drift_type": "RENAMED_COLUMN",
+                            "column_name": f"{old_col} \u2192 {new_col}",
+                            "expected_type": _norm_type(expected[old_col]),
+                            "actual_type": _norm_type(incoming[new_col]),
+                            "type": _norm_type(incoming[new_col]), # legacy ui support
+                            "severity": "HIGH", 
+                            "description": f"Column {old_col} was semantically renamed to {new_col}. Update downstream SQL transformations.",
+                            "detected_at": now
+                        })
+        except Exception as e:
+            logger.error(f"SCHEMA_DRIFT | SentenceTransformer Error: {e}")
 
-        for col in old_cols - new_cols:
-            events.append({"run_id": run_id, "dataset": dataset, "drift_type": "COLUMN_REMOVED",
-                           "column_name": col, "severity": "HIGH", "detected_at": now})
-            logger.warning(f"SCHEMA_DRIFT | COLUMN_REMOVED | HIGH | {col}")
+    # Remove the renamed columns from added/removed lists so they don't double trigger
+    for old_col, new_col in renamed_map.items():
+        if old_col in removed: removed.remove(old_col)
+        if new_col in added: added.remove(new_col)
 
-        for col in new_cols - old_cols:
-            events.append({"run_id": run_id, "dataset": dataset, "drift_type": "COLUMN_ADDED",
-                           "column_name": col, "severity": "MEDIUM", "detected_at": now})
-            logger.info(f"SCHEMA_DRIFT | COLUMN_ADDED | MEDIUM | {col}")
+    # Layer 1 & 4: Deterministic Diff & Template Explanations
+    for col in removed:
+        events.append({
+            "run_id": run_id, "dataset": dataset, 
+            "drift_type": "COLUMN_REMOVED",
+            "column_name": col, 
+            "expected_type": _norm_type(expected[col]),
+            "actual_type": "—",
+            "type": "—",
+            "severity": "HIGH",
+            "description": f"Column {col} removed. Dependent BI reports and dbt models may break.",
+            "detected_at": now
+        })
+        logger.warning(f"SCHEMA_DRIFT | COLUMN_REMOVED | HIGH | {col}")
 
-        for col in old_cols & new_cols:
-            if _norm_type(expected[col]) != _norm_type(incoming[col]):
-                events.append({"run_id": run_id, "dataset": dataset, "drift_type": "TYPE_CHANGED",
-                               "column_name": col, "old_type": str(expected[col]),
-                               "new_type": str(incoming[col]), "severity": "HIGH", "detected_at": now})
-                logger.warning(f"SCHEMA_DRIFT | TYPE_CHANGED | HIGH | {col}")
+    for col in added:
+        events.append({
+            "run_id": run_id, "dataset": dataset, 
+            "drift_type": "COLUMN_ADDED",
+            "column_name": col, 
+            "expected_type": "—",
+            "actual_type": _norm_type(incoming[col]),
+            "type": _norm_type(incoming[col]),
+            "severity": "MEDIUM", 
+            "description": f"New column {col} introduced. Verify downstream consumers can handle this field.",
+            "detected_at": now
+        })
+        logger.info(f"SCHEMA_DRIFT | COLUMN_ADDED | MEDIUM | {col}")
 
-        if old_cols != new_cols:
-            try:
-                raw = llm_client.invoke(RENAME_PROMPT.format(
-                    old_cols=sorted(old_cols - new_cols),
-                    new_cols=sorted(new_cols - old_cols),
-                ))
-                raw = raw.strip()
-                if raw.startswith("```"):
-                    raw = raw.split("```")[1].lstrip("json").strip()
-                parsed = json.loads(raw)
-                for r in parsed.get("renamed", []):
-                    events.append({"run_id": run_id, "dataset": dataset,
-                                   "drift_type": "COLUMN_RENAMED",
-                                   "column_name": r.get("old_name", "?"),
-                                   "new_name": r.get("new_name", "?"),
-                                   "severity": "HIGH", "detected_at": now})
-                    logger.warning(f"SCHEMA_DRIFT | COLUMN_RENAMED | {r.get('old_name')} → {r.get('new_name')}")
-            except Exception as llm_err:
-                logger.warning(f"SCHEMA_DRIFT | LLM rename detection skipped: {llm_err}")
-
-        for event in events:
-            mcp_tool.call("snowflake_append_json", {
-                "file": "schema_drift_log", "record": event,
-                "table": PipelineConfig.DRIFT_LOG_TABLE,
+    # Layer 3: Semantic Datatype Drift
+    for col in (old_cols & new_cols):
+        # Deterministic pandas-type drift
+        if _norm_type(expected[col]) != _norm_type(incoming[col]):
+            events.append({
+                "run_id": run_id, "dataset": dataset, 
+                "drift_type": "TYPE_CHANGED",
+                "column_name": col, 
+                "expected_type": _norm_type(expected[col]),
+                "actual_type": _norm_type(incoming[col]),
+                "type": _norm_type(incoming[col]),
+                "severity": "HIGH", 
+                "description": f"Column {col} changed from {_norm_type(expected[col])} to {_norm_type(incoming[col])}. Downstream operations may fail.",
+                "detected_at": now
             })
+            logger.warning(f"SCHEMA_DRIFT | TYPE_CHANGED | HIGH | {col}")
+        else:
+            # Check Semantic type if Pandas just says "STRING" (which is common for everything)
+            if _norm_type(incoming[col]) == "STRING":
+                vals = [r.get(col) for r in sample_rows]
+                semantic = _detect_semantic_type(col, vals)
+                if semantic != "STRING" and semantic != _norm_type(expected[col]):
+                    events.append({
+                        "run_id": run_id, "dataset": dataset, 
+                        "drift_type": "SEMANTIC_TYPE_CHANGED",
+                        "column_name": col, 
+                        "expected_type": _norm_type(expected[col]),
+                        "actual_type": semantic,
+                        "type": semantic,
+                        "severity": "MEDIUM", 
+                        "description": f"Column {col} is a STRING in Pandas, but semantically looks like a {semantic}. Proceed with caution.",
+                        "detected_at": now
+                    })
+                    logger.warning(f"SCHEMA_DRIFT | SEMANTIC_TYPE_CHANGED | MEDIUM | {col}")
 
-        state["schema_drift_events"] = events
-        state["schema_drift_run_id"] = run_id
-        logger.success(f"SCHEMA_DRIFT | Done | {len(events)} event(s) detected")
-        state["node_status"]["schema_drift"] = "pass"
-
-    except Exception as e:
-        logger.error(f"SCHEMA_DRIFT | FAILED: {e}")
-        state["node_errors"]["schema_drift"] = str(e)
-        state["node_status"]["schema_drift"] = "fail"
-
+    if events:
+        try:
+            mcp_tool.call("snowflake_append_json", {
+                "table": PipelineConfig.DRIFT_LOG_TABLE,
+                "record": {"run_id": run_id, "dataset": dataset, "events": events}
+            })
+        except Exception:
+            pass
+            
+    state["schema_drift_events"] = events
+    state["schema_drift_run_id"] = run_id
+    state["node_status"]["schema_drift"] = "pass" if not any(e.get("severity") == "HIGH" for e in events) else "fail"
     return state

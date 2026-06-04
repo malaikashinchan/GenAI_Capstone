@@ -82,6 +82,23 @@ def generate_customers(n: int, batch_id: str) -> pd.DataFrame:
     # ~1% duplicates
     dup_rows = df.sample(frac=0.01)
     df = pd.concat([df, dup_rows], ignore_index=True)
+
+    # ── INJECT SCHEMA DRIFT DIRT (To test our Local ML Architecture!) ──
+    # ~30% chance of schema drift occurring in a batch
+    drift_roll = random.random()
+    if drift_roll < 0.15:
+        # Simulate RENAMED_COLUMN
+        df.rename(columns={"customer_city": "client_city"}, inplace=True)
+    elif drift_roll < 0.30:
+        # Simulate COLUMN_REMOVED
+        df.drop(columns=["customer_zip_code_prefix"], inplace=True)
+    elif drift_roll < 0.45:
+        # Simulate COLUMN_ADDED
+        df["marketing_source"] = np.random.choice(["facebook", "google", "organic"], len(df))
+    elif drift_roll < 0.60:
+        # Simulate TYPE_CHANGED (Int to Float)
+        df["customer_zip_code_prefix"] = df["customer_zip_code_prefix"].astype(float) + 0.5
+
     return df
 
 
@@ -108,6 +125,12 @@ def generate_orders(customer_ids: list, n: int, batch_id: str) -> pd.DataFrame:
     df["order_approved_at"]             = _nullify(df["order_approved_at"],             rate=0.08)
     df["order_delivered_carrier_date"]  = _nullify(df["order_delivered_carrier_date"],  rate=0.12)
     df["order_delivered_customer_date"] = _nullify(df["order_delivered_customer_date"], rate=0.15)
+    
+    # ── SCHEMA DRIFT DIRT ──
+    if random.random() < 0.20:
+        # Simulate RENAMED_COLUMN
+        df.rename(columns={"order_status": "status_of_order"}, inplace=True)
+        
     return df
 
 
@@ -125,6 +148,16 @@ def generate_payments(order_ids: list, n: int, batch_id: str) -> pd.DataFrame:
     df["payment_type"]  = _inject_bad_categorical(df["payment_type"], bad_values=["cash","check","UNKNOWN"], rate=0.03)
     neg_mask = np.random.random(n) < 0.03
     df.loc[neg_mask, "payment_value"] = -abs(df.loc[neg_mask, "payment_value"])
+    
+    # ── SCHEMA DRIFT DIRT ──
+    drift_roll = random.random()
+    if drift_roll < 0.15:
+        # Simulate COLUMN_REMOVED
+        df.drop(columns=["payment_sequential"], inplace=True)
+    elif drift_roll < 0.30:
+        # Simulate COLUMN_ADDED
+        df["payment_currency"] = "BRL"
+        
     return df
 
 
@@ -148,6 +181,12 @@ def generate_products(n: int, batch_id: str) -> pd.DataFrame:
     })
     df["product_category_name"] = _nullify(df["product_category_name"], rate=0.06)
     df["product_weight_g"]      = _nullify(df["product_weight_g"],      rate=0.04)
+    
+    # ── SCHEMA DRIFT DIRT ──
+    if random.random() < 0.20:
+        # Simulate TYPE_CHANGED
+        df["product_weight_g"] = df["product_weight_g"].astype(str) + "g"
+        
     return df
 
 

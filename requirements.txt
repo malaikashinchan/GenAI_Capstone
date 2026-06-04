@@ -30,3 +30,10 @@ faker>=24.0.0
 great-expectations>=0.18.0
 streamlit-autorefresh>=1.0.1
 
+# PII Detection (Local ML)
+presidio_analyzer==2.2.359
+spacy==3.8.13
+en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+
+# Schema Evolution (Local ML)
+sentence-transformers==5.5.1

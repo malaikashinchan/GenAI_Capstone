@@ -55,6 +55,19 @@ If no issues found, issues_found should be an empty list.
 No markdown. No explanation. Only JSON.
 """
 
+def _shape_signature(val):
+    if val is None or not isinstance(val, str):
+        return val
+    res = []
+    for char in val:
+        if char.isalpha():
+            res.append("A" if char.isupper() else "a")
+        elif char.isdigit():
+            res.append("0")
+        else:
+            res.append(char)
+    return "".join(res)
+
 
 def run(state: AgentState) -> AgentState:
     state["current_node"] = "bronze_inspector"
@@ -62,6 +75,19 @@ def run(state: AgentState) -> AgentState:
     schema      = state.get("schema", {})
     sample_rows = state.get("sample_rows", [])
     row_count   = state.get("row_count", 0)
+    pii_map     = state.get("pii_map", {})
+    
+    # Generate privacy-preserving Shape Signatures for the LLM prompt
+    masked_samples = []
+    for row in sample_rows[:5]:
+        masked_row = {}
+        for col, val in row.items():
+            level = pii_map.get(col, {}).get("pii_level", "NONE")
+            if level in ["HIGH", "MEDIUM"]:
+                masked_row[col] = _shape_signature(val)
+            else:
+                masked_row[col] = val
+        masked_samples.append(masked_row)
 
     logger.info(f"BRONZE_INSPECTOR | Starting | dataset={dataset} | rows={row_count:,}")
 
@@ -70,7 +96,7 @@ def run(state: AgentState) -> AgentState:
             dataset     = dataset,
             row_count   = row_count,
             schema      = json.dumps(schema, indent=2),
-            sample_rows = json.dumps(sample_rows[:5], indent=2, default=str),
+            sample_rows = json.dumps(masked_samples, indent=2, default=str),
         )
 
         raw = llm_client.invoke(prompt).strip()
