@@ -137,9 +137,28 @@ def run(state: AgentState) -> AgentState:
                 
             raw = raw.strip()
             llm_map = json.loads(raw)
-            for k, v in llm_map.items():
-                if k in unclassified_schema:
-                    pii_map[k] = v
+            
+            # Robust mapping: LLM might return list or flat dict
+            if isinstance(llm_map, list):
+                # LLM returned [{"column_name": "x", "pii_level": "LOW"}]
+                for item in llm_map:
+                    if isinstance(item, dict):
+                        col = item.get("column_name", item.get("column"))
+                        if col in unclassified_schema:
+                            pii_map[col] = {"pii_level": item.get("pii_level", "NONE")}
+            elif isinstance(llm_map, dict):
+                for k, v in llm_map.items():
+                    if k in unclassified_schema:
+                        if isinstance(v, dict):
+                            pii_map[k] = v
+                        elif isinstance(v, str):
+                            # LLM returned {"col": "LOW"}
+                            pii_map[k] = {"pii_level": v, "reason": "LLM fallback"}
+            
+            # Ensure everything in pii_map has a pii_level that can be .get()
+            for k in pii_map:
+                if not isinstance(pii_map[k], dict):
+                    pii_map[k] = {"pii_level": "NONE", "reason": "Invalid LLM struct"}
 
         high   = [c for c, v in pii_map.items() if v.get("pii_level") == "HIGH"]
         medium = [c for c, v in pii_map.items() if v.get("pii_level") == "MEDIUM"]
