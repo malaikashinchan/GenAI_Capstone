@@ -3,6 +3,7 @@ streamlit_app.py — Unified Operations Command Center
 Olist LLM Data Pipeline — Enterprise Dashboard
 """
 import os
+import sys
 import re
 import json
 import datetime
@@ -543,7 +544,7 @@ with col_right:
             # Start run in background
             with open("metadata/live_run.log", "w") as log_f:
                 proc = subprocess.Popen(
-                    ["python3", "run_continuous.py", "--once", "--rows", str(c_rows), "--datasets", c_dataset],
+                    [sys.executable, "run_continuous.py", "--once", "--rows", str(c_rows), "--datasets", c_dataset],
                     stdout=log_f,
                     stderr=subprocess.DEVNULL,
                     text=True,
