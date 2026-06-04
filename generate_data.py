@@ -216,14 +216,19 @@ def write_to_snowflake(df: pd.DataFrame, table: str, conn) -> int:
 
 def get_snowflake_conn():
     import snowflake.connector
+    from config.settings import SnowflakeConfig
+    
+    if not SnowflakeConfig.ACCOUNT:
+        raise ValueError("Snowflake Account is not set! Please create a profile in the UI first.")
+        
     return snowflake.connector.connect(
-        account   = os.getenv("SNOWFLAKE_ACCOUNT"),
-        user      = os.getenv("SNOWFLAKE_USER"),
-        password  = os.getenv("SNOWFLAKE_PASSWORD"),
-        warehouse = os.getenv("SNOWFLAKE_WAREHOUSE"),
-        database  = os.getenv("SNOWFLAKE_DATABASE"),
-        schema    = os.getenv("SNOWFLAKE_SCHEMA"),
-        role      = os.getenv("SNOWFLAKE_ROLE"),
+        account   = SnowflakeConfig.ACCOUNT,
+        user      = SnowflakeConfig.USER,
+        password  = SnowflakeConfig.PASSWORD,
+        warehouse = SnowflakeConfig.WAREHOUSE,
+        database  = SnowflakeConfig.DATABASE,
+        schema    = SnowflakeConfig.SCHEMA,
+        role      = SnowflakeConfig.ROLE,
     )
 
 
