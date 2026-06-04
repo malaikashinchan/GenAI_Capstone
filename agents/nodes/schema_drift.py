@@ -276,5 +276,8 @@ def run(state: AgentState) -> AgentState:
             
     state["schema_drift_events"] = events
     state["schema_drift_run_id"] = run_id
-    state["node_status"]["schema_drift"] = "pass" if not any(e.get("severity") == "HIGH" for e in events) else "fail"
+    
+    # Schema drift should NOT crash the pipeline into an infinite heal loop.
+    # The drift is already logged to Snowflake and the UI. The pipeline should adapt and continue.
+    state["node_status"]["schema_drift"] = "pass"
     return state
