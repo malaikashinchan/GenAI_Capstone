@@ -218,7 +218,7 @@ if p.exists():
 
     styled = df[display_cols].style
     if "status" in display_cols:
-        styled = styled.applymap(colour_status, subset=["status"])
+        styled = styled.map(colour_status, subset=["status"])
 
     st.dataframe(styled, use_container_width=True, hide_index=True)
 else:
