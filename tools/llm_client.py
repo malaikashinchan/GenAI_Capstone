@@ -35,7 +35,7 @@ class LLMClient:
             try:
                 from langchain_groq import ChatGroq
                 self._client = ChatGroq(
-                    api_key=os.getenv("GROQ_API_KEY"),
+                    api_key=LLMConfig.API_KEY,
                     model_name=self.model or "llama-3.1-8b-instant",
                 )
                 logger.info(f"LLM | Groq ready | model={self.model}")
