@@ -13,6 +13,7 @@ The report is stored in state["bronze_report"] and logged to Snowflake.
 This is the first LLM "eye" on the raw data.
 """
 import json
+import re
 from agents.state import AgentState
 from tools.llm_client import llm_client
 from tools.snowflake_mcp_tool import mcp_tool
