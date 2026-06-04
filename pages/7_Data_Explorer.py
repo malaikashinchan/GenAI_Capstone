@@ -6,6 +6,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 st.set_page_config(page_title="Data Explorer", page_icon="🔍", layout="wide")
+import streamlit as st
+if "username" not in st.session_state:
+    st.warning("Please log in on the main page.")
+    st.stop()
+username = st.session_state["username"]
+active_prof = st.session_state.get("active_profile", "Default")
+active_prof_key = f"{username}_{active_prof}"
 
 # ── Styles ────────────────────────────────────────────────────────
 st.markdown("""
@@ -106,7 +113,7 @@ from config.settings import PipelineConfig
 
 def get_available_tables():
     dataset_names = set(["customers"])
-    hist_path = Path("metadata/batch_history.json")
+    hist_path = Path(f"metadata/batch_history_{active_prof_key}.json")
     if hist_path.exists():
         try:
             with open(hist_path) as f:
@@ -148,6 +155,7 @@ with col_btn:
 with st.spinner(f"Loading {table}..."):
     if PipelineConfig.USE_LOCAL_CSV:
         # Load from Local CSV
+
         path = None
         if table.startswith("RAW_OLIST_"):
             csv_map = {

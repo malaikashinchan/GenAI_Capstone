@@ -8,7 +8,15 @@ from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv()
 
-st.set_page_config(page_title="Pipeline Control", page_icon="🎛️", layout="wide")
+st.set_page_config(page_title="Uploads & Pipeline Controls", page_icon="🎛️", layout="wide")
+
+import streamlit as st
+if "username" not in st.session_state:
+    st.warning("Please log in on the main page.")
+    st.stop()
+username = st.session_state["username"]
+active_prof = st.session_state.get("active_profile", "Default")
+active_prof_key = f"{username}_{active_prof}"
 
 # ── Shared styles (consistent with main app) ────────────────────
 st.markdown("""
@@ -63,7 +71,7 @@ html, body, p, h1, h2, h3, h4, h5, h6, a, button, input, select, textarea { font
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("# 🎛️ Pipeline Control Panel")
+st.markdown("# 🎛️ Uploads & Pipeline Controls")
 st.caption("Generate data, trigger pipeline runs, control batch parameters")
 
 # ── Controls ────────────────────────────────────────────────────
@@ -105,8 +113,10 @@ col1, col2, col3 = st.columns(3)
 with col1:
     if st.button("📊 Generate Data Only", use_container_width=True, type="secondary"):
         with st.spinner("Generating data..."):
+            env = os.environ.copy()
+            env["ACTIVE_PROFILE_NAME"] = active_prof_key
             result = subprocess.run([sys.executable, "generate_data.py", "--rows", str(rows)],
-                                     capture_output=True, text=True, cwd=os.getcwd(), timeout=60)
+                                     capture_output=True, text=True, cwd=os.getcwd(), env=env, timeout=60)
             if result.returncode == 0:
                 st.success("✅ Data generated and pushed to Snowflake!")
                 st.code(result.stdout[-500:], language="text")
@@ -128,10 +138,14 @@ with col2:
             
             with st.status("Running pipeline...", expanded=True) as status:
                 st.write(f"Mode: {mode} | Rows: {rows} | Datasets: {', '.join(ds_sel)}")
-                result = subprocess.run(cmd, capture_output=True, text=True, cwd=os.getcwd(), timeout=300)
+                
+                env = os.environ.copy()
+                env["ACTIVE_PROFILE_NAME"] = active_prof_key
+                
+                result = subprocess.run(cmd, capture_output=True, text=True, cwd=os.getcwd(), timeout=300, env=env)
                 
                 # Save to live_run.log so the main page terminal stays updated
-                with open("metadata/live_run.log", "w") as f:
+                with open(f"metadata/live_run_{active_prof_key}.log", "w") as f:
                     f.write(result.stdout)
 
             if result.returncode == 0:
@@ -151,10 +165,8 @@ with col3:
 def _get_active_cfg(key, default="—"):
     try:
         import json
-        with open("metadata/active_profile.json") as f:
-            prof_name = json.load(f).get("active_profile")
-            with open(f"profiles/{prof_name}.json") as pf:
-                return json.load(pf).get(key, os.getenv(key, default))
+        with open(f"profiles/{active_prof_key}.json") as pf:
+            return json.load(pf).get(key, os.getenv(key, default))
     except Exception:
         return os.getenv(key, default)
 
@@ -200,7 +212,7 @@ st.markdown(f"""
 st.markdown('<div class="sec-title">📦 Recent Batches <span>last 10 runs</span></div>',
             unsafe_allow_html=True)
 
-p = Path("metadata/batch_history.json")
+p = Path(f"metadata/batch_history_{active_prof_key}.json")
 if p.exists():
     hist = json.load(open(p))
     import pandas as pd

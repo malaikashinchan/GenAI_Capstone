@@ -5,10 +5,17 @@ import pandas as pd
 from pathlib import Path
 
 st.set_page_config(page_title="Lineage", page_icon="🔗", layout="wide")
+import streamlit as st
+if "username" not in st.session_state:
+    st.warning("Please log in on the main page.")
+    st.stop()
+username = st.session_state["username"]
+active_prof = st.session_state.get("active_profile", "Default")
+active_prof_key = f"{username}_{active_prof}"
 st.markdown("# 🔗 Data Lineage Visualization")
 st.caption("Trace data flow from Bronze → Silver → Gold across pipeline nodes")
 
-hist = json.load(open("metadata/batch_history.json")) if Path("metadata/batch_history.json").exists() else []
+hist = json.load(open(f"metadata/batch_history_{active_prof_key}.json")) if Path(f"metadata/batch_history_{active_prof_key}.json").exists() else []
 if not hist: st.info("No data yet."); st.stop()
 
 opts = [f"Batch #{i+1} — {b['batch_id']} ({b['status']})" for i,b in enumerate(hist)]
@@ -23,6 +30,7 @@ def render_mermaid(code: str):
         </pre>
         <script type="module">
             import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+
             mermaid.initialize({{ startOnLoad: true, theme: 'dark' }});
         </script>
         """,

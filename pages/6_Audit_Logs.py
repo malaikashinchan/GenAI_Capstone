@@ -4,19 +4,27 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from pathlib import Path
+import streamlit as st
+if "username" not in st.session_state:
+    st.warning("Please log in on the main page.")
+    st.stop()
+username = st.session_state["username"]
+active_prof = st.session_state.get("active_profile", "Default")
+active_prof_key = f"{username}_{active_prof}"
+
 
 st.set_page_config(page_title="Audit & Logs", page_icon="📋", layout="wide")
 st.markdown("# 📋 Audit & Logs Panel")
 st.caption("Run history, heal logs, error summaries, full observability")
 
-hist = json.load(open("metadata/batch_history.json")) if Path("metadata/batch_history.json").exists() else []
+hist = json.load(open(f"metadata/batch_history_{active_prof_key}.json")) if Path(f"metadata/batch_history_{active_prof_key}.json").exists() else []
 if not hist: st.info("No data yet."); st.stop()
 
 # ── Run History Table ───────────────────────────────────────────
 st.markdown("### 📦 Run History")
 hdf = pd.DataFrame(hist)
 display_cols = [c for c in ["batch_id","timestamp","dataset","status","raw_rows","clean_rows","masked_rows","heals","schema_drifts","bronze_issues","duration_s"] if c in hdf.columns]
-st.dataframe(hdf[display_cols], use_container_width=True, hide_index=True, height=300)
+st.dataframe(hdf[display_cols], use_container_width=True, hide_index=True)
 
 # ── Status Distribution ────────────────────────────────────────
 st.divider()
@@ -59,7 +67,7 @@ for i,b in enumerate(hist):
             "Fix Applied": str(h.get("fix",""))[:100],
         })
 if all_heals:
-    st.dataframe(pd.DataFrame(all_heals), use_container_width=True, hide_index=True, height=300)
+    st.dataframe(pd.DataFrame(all_heals), use_container_width=True, hide_index=True)
 else:
     st.success("No heal events recorded.")
 
@@ -86,6 +94,14 @@ if log_dir.exists():
     if logs:
         sel_log = st.selectbox("View log file:", [l.name for l in logs])
         log_path = log_dir / sel_log
-        st.code(log_path.read_text()[:3000], language="text")
+        
+        view_mode = st.radio("Display Mode", ["Markdown Preview", "Raw Text"], horizontal=True)
+        content = log_path.read_text()
+        
+        if view_mode == "Markdown Preview":
+            with st.container(border=True):
+                st.markdown(content)
+        else:
+            st.code(content[:3000], language="text")
     else:
         st.info("No log files found.")

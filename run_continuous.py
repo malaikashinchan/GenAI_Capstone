@@ -419,7 +419,9 @@ def run_one_batch(dataset: str, n_rows: int, batch_id: str, batch_num: int) -> d
 
     # Save to batch history
     os.makedirs("metadata", exist_ok=True)
-    hist_path = "metadata/batch_history.json"
+    prof_suffix = os.getenv("ACTIVE_PROFILE_NAME", "")
+    hist_filename = f"batch_history_{prof_suffix}.json" if prof_suffix else "batch_history.json"
+    hist_path = f"metadata/{hist_filename}"
     history = []
     if Path(hist_path).exists():
         try:

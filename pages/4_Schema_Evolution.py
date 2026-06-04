@@ -4,12 +4,20 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from pathlib import Path
+import streamlit as st
+if "username" not in st.session_state:
+    st.warning("Please log in on the main page.")
+    st.stop()
+username = st.session_state["username"]
+active_prof = st.session_state.get("active_profile", "Default")
+active_prof_key = f"{username}_{active_prof}"
+
 
 st.set_page_config(page_title="Schema Evolution", page_icon="🌊", layout="wide")
 st.markdown("# 🌊 Schema Evolution Tracker")
 st.caption("Track schema changes, column additions, type modifications across batches")
 
-hist = json.load(open("metadata/batch_history.json")) if Path("metadata/batch_history.json").exists() else []
+hist = json.load(open(f"metadata/batch_history_{active_prof_key}.json")) if Path(f"metadata/batch_history_{active_prof_key}.json").exists() else []
 if not hist: st.info("No data yet."); st.stop()
 
 # ── Batch Selector ──────────────────────────────────────────────

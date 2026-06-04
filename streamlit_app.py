@@ -13,6 +13,7 @@ import signal
 from pathlib import Path
 import pandas as pd
 import streamlit as st
+from utils.auth import verify_login, register_user
 import streamlit.components.v1 as components
 import plotly.express as px
 import plotly.graph_objects as go
@@ -32,6 +33,39 @@ else:
     load_dotenv()
 
 st.set_page_config(page_title="Olist Operations Center", page_icon="🔮", layout="wide", initial_sidebar_state="expanded")
+
+# ── Authentication System ────────────────────────────────────────
+if "username" not in st.session_state:
+    st.markdown("<h1 style='text-align: center; margin-top: 50px;'>Olist LLM Pipeline</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #94a3b8;'>Please log in to access your secure workspace.</p>", unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:
+        tab1, tab2 = st.tabs(["Log In", "Sign Up"])
+        with tab1:
+            l_email = st.text_input("Email", key="login_email")
+            l_pass = st.text_input("Password", type="password", key="login_pass")
+            if st.button("Log In", use_container_width=True, type="primary"):
+                if verify_login(l_email, l_pass):
+                    st.session_state["username"] = l_email.lower().strip()
+                    st.rerun()
+                else:
+                    st.error("Invalid email or password.")
+        with tab2:
+            s_email = st.text_input("Email", key="signup_email")
+            s_pass = st.text_input("Password", type="password", key="signup_pass")
+            if st.button("Sign Up", use_container_width=True, type="primary"):
+                if s_email and s_pass:
+                    if register_user(s_email, s_pass):
+                        st.success("Account created! Please log in.")
+                    else:
+                        st.error("Email already registered.")
+                else:
+                    st.error("Please fill in both fields.")
+    st.stop()
+
+username = st.session_state["username"]
+
 
 # ── Styling and Theme ───────────────────────────────────────────
 st.markdown("""
@@ -53,53 +87,54 @@ html, body, p, h1, h2, h3, h4, h5, h6, a, button, input, select, textarea {
   text-transform: none;
 }
 
-.stApp{background:#0b0b14; color:#e2e8f0}
-section[data-testid="stSidebar"]{background:#10101f!important; border-right: 1px solid rgba(99,102,241,.12)}
-h1,h2,h3,h4,h5,h6{color:#e2e8f0!important; font-weight:800!important}
-.hero{text-align:center;padding:1.5rem 0 0.5rem; background: linear-gradient(180deg, rgba(99,102,241,0.08) 0%, rgba(11,11,20,0) 100%); border-bottom: 1px solid rgba(99,102,241,0.06); margin-bottom: 1rem}
-.hero h1{font-size:2.8rem;font-weight:900!important;background:linear-gradient(135deg,#818cf8,#a78bfa,#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin:0}
-.hero p{color:#94a3b8;font-size:1rem;margin-top:.3rem; letter-spacing: 0.5px}
+/* Classy Obsidian & Gold Theme */
+.stApp{background:#09090b; color:#f4f4f5}
+section[data-testid="stSidebar"]{background:#09090b!important; border-right: 1px solid rgba(212,175,55,.12)}
+h1,h2,h3,h4,h5,h6{color:#fafafa!important; font-weight:800!important}
+.hero{text-align:center;padding:1.5rem 0 0.5rem; background: linear-gradient(180deg, rgba(212,175,55,0.06) 0%, rgba(9,9,11,0) 100%); border-bottom: 1px solid rgba(212,175,55,0.08); margin-bottom: 1rem}
+.hero h1{font-size:2.8rem;font-weight:900!important;background:linear-gradient(135deg,#cba328,#f3e5ab,#d4af37);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin:0}
+.hero p{color:#a1a1aa;font-size:1rem;margin-top:.3rem; letter-spacing: 0.5px}
 
 /* Sidebar expander polish */
 section[data-testid="stSidebar"] [data-testid="stExpander"] details summary {
-  color: #c4b5fd !important; font-weight: 600 !important; font-size: .87rem !important;
-  background: rgba(99,102,241,.06) !important; border-radius: 8px !important;
+  color: #d4af37 !important; font-weight: 600 !important; font-size: .87rem !important;
+  background: rgba(212,175,55,.05) !important; border-radius: 8px !important;
   padding: 8px 10px !important;
 }
 section[data-testid="stSidebar"] [data-testid="stExpander"] details summary:hover {
-  background: rgba(99,102,241,.12) !important;
+  background: rgba(212,175,55,.09) !important;
 }
 section[data-testid="stSidebar"] [data-testid="stExpander"] details {
-  border: 1px solid rgba(99,102,241,.15) !important; border-radius: 10px !important; margin-bottom: 8px !important;
+  border: 1px solid rgba(212,175,55,.15) !important; border-radius: 10px !important; margin-bottom: 8px !important;
 }
 
-.metric-card{background:rgba(30,30,50,.5); border:1px solid rgba(99,102,241,.12); border-radius:14px; padding:16px 14px; text-align:center; box-shadow: 0 4px 20px rgba(0,0,0,0.15)}
+.metric-card{background:rgba(24,24,27,.5); border:1px solid rgba(212,175,55,.12); border-radius:14px; padding:16px 14px; text-align:center; box-shadow: 0 4px 20px rgba(0,0,0,0.2)}
 .metric-card .val{font-size:2rem; font-weight:900; line-height:1.1; margin-bottom:4px}
-.metric-card .lbl{font-size:.7rem; color:#64748b; text-transform:uppercase; letter-spacing:1.5px; font-weight:700}
-.purple{color:#c084fc} .indigo{color:#818cf8} .green{color:#34d399} .amber{color:#fbbf24} .rose{color:#fb7185} .white{color:#e2e8f0}
+.metric-card .lbl{font-size:.7rem; color:#71717a; text-transform:uppercase; letter-spacing:1.5px; font-weight:700}
+.purple{color:#cba328} .indigo{color:#d4af37} .green{color:#34d399} .amber{color:#fbbf24} .rose{color:#fb7185} .white{color:#fafafa}
 
-.terminal-header{background:#1e1e2f; border:1px solid rgba(99,102,241,0.15); border-bottom:none; border-radius:8px 8px 0 0; padding:6px 12px; display:flex; align-items:center; gap:6px}
+.terminal-header{background:#18181b; border:1px solid rgba(212,175,55,0.15); border-bottom:none; border-radius:8px 8px 0 0; padding:6px 12px; display:flex; align-items:center; gap:6px}
 .terminal-dot{width:10px; height:10px; border-radius:50%}
 .term-red{background:#fb7185} .term-yell{background:#fbbf24} .term-green{background:#34d399}
-.terminal-title{font-family:'JetBrains Mono',monospace; font-size:.72rem; color:#64748b; margin-left:8px; font-weight:600}
-.terminal-body{font-family:'JetBrains Mono',monospace!important; font-size:.8rem!important; background:#07070f!important; border:1px solid rgba(99,102,241,0.15)!important; border-radius:0 0 8px 8px!important; padding:12px!important; color:#818cf8!important; height: 260px; overflow-y: auto}
+.terminal-title{font-family:'JetBrains Mono',monospace; font-size:.72rem; color:#71717a; margin-left:8px; font-weight:600}
+.terminal-body{font-family:'JetBrains Mono',monospace!important; font-size:.8rem!important; background:#09090b!important; border:1px solid rgba(212,175,55,0.15)!important; border-radius:0 0 8px 8px!important; padding:12px!important; color:#d4af37!important; height: 260px; overflow-y: auto}
 
-.card{background:rgba(20,20,35,.5); border:1px solid rgba(99,102,241,.08); border-radius:12px; padding:16px; margin-bottom:12px}
+.card{background:rgba(24,24,27,.5); border:1px solid rgba(212,175,55,.08); border-radius:12px; padding:16px; margin-bottom:12px}
 .chip{display:inline-block;padding:3px 12px;border-radius:99px;font-size:.72rem;font-weight:700}
 .chip-ok{background:rgba(52,211,153,.12);color:#34d399}
 .chip-fail{background:rgba(251,113,133,.12);color:#fb7185}
-.chip-run{background:rgba(129,140,248,.12);color:#818cf8; animation: blinker 1.5s linear infinite}
+.chip-run{background:rgba(212,175,55,.12);color:#d4af37; animation: blinker 1.5s linear infinite}
 @keyframes blinker { 50% { opacity: 0.5; } }
 
 /* Self-Heal cards */
-.heal-card{background:rgba(20,20,40,.7);border:1px solid rgba(251,191,36,.15);border-radius:14px;padding:0;margin-bottom:18px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.25)}
+.heal-card{background:rgba(24,24,27,.7);border:1px solid rgba(251,191,36,.15);border-radius:14px;padding:0;margin-bottom:18px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.25)}
 .heal-header{background:linear-gradient(90deg,rgba(251,191,36,.12),rgba(251,191,36,.04));padding:12px 16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;border-bottom:1px solid rgba(251,191,36,.12)}
 .heal-body{padding:0 16px 16px}
 .heal-badge{background:rgba(251,191,36,.18);color:#fbbf24;padding:3px 12px;border-radius:99px;font-size:.72rem;font-weight:800;letter-spacing:.5px}
-.heal-node{background:rgba(129,140,248,.12);color:#818cf8;padding:3px 10px;border-radius:99px;font-size:.72rem;font-weight:700}
-.heal-retry{background:rgba(167,139,250,.1);color:#a78bfa;padding:3px 10px;border-radius:99px;font-size:.72rem;font-weight:700}
+.heal-node{background:rgba(212,175,55,.12);color:#d4af37;padding:3px 10px;border-radius:99px;font-size:.72rem;font-weight:700}
+.heal-retry{background:rgba(243,229,171,.1);color:#f3e5ab;padding:3px 10px;border-radius:99px;font-size:.72rem;font-weight:700}
 .heal-error-type{color:#fb7185;font-size:.78rem;font-weight:700;margin-left:auto}
-.heal-section-label{font-size:.72rem;text-transform:uppercase;letter-spacing:1.5px;color:#64748b;font-weight:700;margin:12px 0 6px}
+.heal-section-label{font-size:.72rem;text-transform:uppercase;letter-spacing:1.5px;color:#71717a;font-weight:700;margin:12px 0 6px}
 </style>
 """, unsafe_allow_html=True)
 
@@ -108,30 +143,30 @@ os.makedirs("profiles", exist_ok=True)
 os.makedirs("metadata", exist_ok=True)
 
 
-def load_profiles():
-    prof_file = Path("profiles/profiles.json")
+def load_profiles(user):
+    prof_file = Path(f"profiles/{user}_profiles.json")
     if prof_file.exists():
         return json.load(open(prof_file))
     return {"Default": {
         "LLM_PROVIDER": "groq",
         "LLM_MODEL": "llama-3.3-70b-versatile",
-        "GROQ_API_KEY": os.getenv("GROQ_API_KEY", ""),
-        "SNOWFLAKE_ACCOUNT": os.getenv("SNOWFLAKE_ACCOUNT", ""),
-        "SNOWFLAKE_USER": os.getenv("SNOWFLAKE_USER", ""),
-        "SNOWFLAKE_PASSWORD": os.getenv("SNOWFLAKE_PASSWORD", ""),
-        "SNOWFLAKE_DATABASE": os.getenv("SNOWFLAKE_DATABASE", "MY_DB"),
-        "SNOWFLAKE_SCHEMA": os.getenv("SNOWFLAKE_SCHEMA", "PUBLIC"),
-        "SNOWFLAKE_WAREHOUSE": os.getenv("SNOWFLAKE_WAREHOUSE", "COMPUTE_WH"),
-        "USE_LOCAL_CSV": os.getenv("USE_LOCAL_CSV", "false")
+        "GROQ_API_KEY": "",
+        "SNOWFLAKE_ACCOUNT": "",
+        "SNOWFLAKE_USER": "",
+        "SNOWFLAKE_PASSWORD": "",
+        "SNOWFLAKE_DATABASE": "MY_DB",
+        "SNOWFLAKE_SCHEMA": "PUBLIC",
+        "SNOWFLAKE_WAREHOUSE": "COMPUTE_WH",
+        "USE_LOCAL_CSV": "false"
     }}
 
 
-def save_profiles(profiles_dict):
-    with open("profiles/profiles.json", "w") as f:
+def save_profiles(user, profiles_dict):
+    with open(f"profiles/{user}_profiles.json", "w") as f:
         json.dump(profiles_dict, f, indent=2)
 
 
-profiles = load_profiles()
+profiles = load_profiles(username)
 
 
 # Sidebar: Select Profile
@@ -152,12 +187,12 @@ st.sidebar.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# Sync profile choice to config/settings dynamically via file marker
-with open("metadata/active_profile.json", "w") as f:
-    json.dump({"active_profile": selected_profile}, f)
+st.session_state["active_profile"] = selected_profile
 
-# Write out the selected profile configuration to profiles/{name}.json for config/settings to fetch
-with open(f"profiles/{selected_profile}.json", "w") as f:
+# Write out the selected profile configuration to profiles/{username}_{name}.json for config/settings to fetch
+# This guarantees that the background process will only load the active user's active profile!
+active_profile_key = f"{username}_{selected_profile}"
+with open(f"profiles/{active_profile_key}.json", "w") as f:
     json.dump(profiles[selected_profile], f, indent=2)
 
 # Sidebar: Profile configuration overrides — toggle button (avoids broken expander arrows)
@@ -196,7 +231,7 @@ if st.session_state["_show_settings"]:
                 "SNOWFLAKE_ROLE": sf_role,
                 "USE_LOCAL_CSV": "true" if local_csv else "false"
             }
-            save_profiles(profiles)
+            save_profiles(username, profiles)
             st.success("Saved!")
             st.rerun()
 
@@ -217,7 +252,7 @@ if st.session_state["_show_newprof"]:
         if st.button("Create", use_container_width=True, key="btn_create_prof") and new_name:
             if new_name not in profiles:
                 profiles[new_name] = profiles["Default"].copy()
-                save_profiles(profiles)
+                save_profiles(username, profiles)
                 st.success(f"{new_name} created!")
                 st.rerun()
 
@@ -398,7 +433,9 @@ def render_live_pipeline_graph(active_node, node_states):
 
 # ── Shared Data Loaders ───────────────────────────────────────────
 def load_hist():
-    gp = Path("metadata/batch_history.json")
+    # Get active profile batch history
+    prof_suffix = f"{username}_{selected_profile}"
+    gp = Path(f"metadata/batch_history_{prof_suffix}.json")
     if gp.exists():
         return json.load(open(gp))
     return []
@@ -467,7 +504,8 @@ if running_pid:
         # Process completed! Let's clean up
         st.session_state["pipeline_process_pid"] = None
         # Copy newly created batch history item to profile history
-        p = Path("metadata/batch_history.json")
+        hist_path = f"metadata/batch_history_{username}_{selected_profile}.json"
+        p = Path(hist_path)
         if p.exists():
             new_hist = json.load(open(p))
             if new_hist:
@@ -541,13 +579,17 @@ with col_right:
                     os.remove("metadata/pipeline_live_state.json")
                 except:
                     pass
-            # Start run in background
-            with open("metadata/live_run.log", "w") as log_f:
+            env = os.environ.copy()
+            env["ACTIVE_PROFILE_NAME"] = f"{username}_{selected_profile}"
+        
+            # Scope the log file to this specific user+profile
+            log_path = f"metadata/live_run_{username}_{selected_profile}.log"
+            with open(log_path, "w") as log_f:
                 proc = subprocess.Popen(
                     [sys.executable, "run_continuous.py", "--once", "--rows", str(c_rows), "--datasets", c_dataset],
+                    env=env,
                     stdout=log_f,
-                    stderr=subprocess.DEVNULL,
-                    text=True,
+                    stderr=log_f,
                     cwd=os.getcwd()
                 )
             st.session_state["pipeline_process_pid"] = proc.pid
@@ -577,7 +619,7 @@ st.markdown("""
 log_box = st.empty()
 
 # Stream background log — strip ANSI colour codes before display
-log_path = Path("metadata/live_run.log")
+log_path = Path(f"metadata/live_run_{username}_{selected_profile}.log")
 if log_path.exists():
     try:
         with open(log_path, errors="replace") as lf:
