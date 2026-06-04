@@ -129,33 +129,72 @@ def run(state: AgentState) -> AgentState:
             from sentence_transformers import SentenceTransformer
             from sentence_transformers.util import cos_sim
             
-            # Using the fast, lightweight local model (downloads on first run if not present)
             model = SentenceTransformer('all-MiniLM-L6-v2')
-            
             old_emb = model.encode(removed)
             new_emb = model.encode(added)
-            
             sims = cos_sim(old_emb, new_emb)
             
-            # Check for high similarity indicating a rename
+            matched_old = set()
+            matched_new = set()
+            
             for i, old_col in enumerate(removed):
                 for j, new_col in enumerate(added):
                     if sims[i][j].item() > 0.65:
                         renamed_map[old_col] = new_col
-                        logger.warning(f"SCHEMA_DRIFT | RENAMED_COLUMN | {old_col} -> {new_col} (Similarity: {sims[i][j].item():.2f})")
+                        matched_old.add(old_col)
+                        matched_new.add(new_col)
+                        logger.warning(f"SCHEMA_DRIFT | RENAMED_COLUMN (ML) | {old_col} -> {new_col} (Sim: {sims[i][j].item():.2f})")
                         events.append({
                             "run_id": run_id, "dataset": dataset, 
                             "drift_type": "RENAMED_COLUMN",
                             "column_name": f"{old_col} \u2192 {new_col}",
                             "expected_type": _norm_type(expected[old_col]),
                             "actual_type": _norm_type(incoming[new_col]),
-                            "type": _norm_type(incoming[new_col]), # legacy ui support
+                            "type": _norm_type(incoming[new_col]),
+                            "severity": "HIGH", 
+                            "description": f"Column {old_col} was semantically renamed to {new_col}. Update downstream SQL transformations.",
+                            "detected_at": now
+                        })
+            
+            # ── Fallback to LLM for anything the ML model missed ──
+            unmatched_removed = [c for c in removed if c not in matched_old]
+            unmatched_added = [c for c in added if c not in matched_new]
+            
+            if unmatched_removed and unmatched_added:
+                old_cols_formatted = [f"{c} ({_norm_type(expected[c])})" for c in unmatched_removed]
+                new_cols_formatted = [f"{c} ({_norm_type(incoming[c])})" for c in unmatched_added]
+                
+                prompt = RENAME_PROMPT.format(
+                    old_cols=", ".join(old_cols_formatted),
+                    new_cols=", ".join(new_cols_formatted)
+                )
+                
+                res = llm_client.call(prompt, temperature=0.0)
+                clean_res = res.strip()
+                if clean_res.startswith("```json"): clean_res = clean_res[7:]
+                if clean_res.startswith("```"): clean_res = clean_res[3:]
+                if clean_res.endswith("```"): clean_res = clean_res[:-3]
+                    
+                res_data = json.loads(clean_res.strip())
+                for rename in res_data.get("renamed", []):
+                    old_col = rename.get("old_name")
+                    new_col = rename.get("new_name")
+                    if old_col in unmatched_removed and new_col in unmatched_added:
+                        renamed_map[old_col] = new_col
+                        logger.warning(f"SCHEMA_DRIFT | RENAMED_COLUMN (LLM Fallback) | {old_col} -> {new_col}")
+                        events.append({
+                            "run_id": run_id, "dataset": dataset, 
+                            "drift_type": "RENAMED_COLUMN",
+                            "column_name": f"{old_col} \u2192 {new_col}",
+                            "expected_type": _norm_type(expected[old_col]),
+                            "actual_type": _norm_type(incoming[new_col]),
+                            "type": _norm_type(incoming[new_col]),
                             "severity": "HIGH", 
                             "description": f"Column {old_col} was semantically renamed to {new_col}. Update downstream SQL transformations.",
                             "detected_at": now
                         })
         except Exception as e:
-            logger.error(f"SCHEMA_DRIFT | SentenceTransformer Error: {e}")
+            logger.error(f"SCHEMA_DRIFT | Rename Detection Error: {e}")
 
     # Remove the renamed columns from added/removed lists so they don't double trigger
     for old_col, new_col in renamed_map.items():
