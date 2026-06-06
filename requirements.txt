@@ -38,3 +38,7 @@ en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_
 
 # Schema Evolution (Local ML)
 sentence-transformers==5.5.1
+
+# Evaluation & ML Ops
+mlflow>=2.10.0
+scikit-learn>=1.4.0

@@ -57,6 +57,46 @@ def get_analyzer():
             pass
     return _analyzer
 
+def detect_pii_local(col: str, col_values: list, analyzer) -> str:
+    """Returns 'HIGH', 'MEDIUM', or None"""
+    col_lower = col.lower()
+    
+    # 1. Exact Column Name Heuristics
+    if col_lower in ['email', 'customer_email', 'cpf', 'cnpj', 'ssn']:
+        return "HIGH"
+    if 'name' in col_lower and 'company' not in col_lower:
+        return "HIGH"
+    if col_lower in ['phone', 'telephone', 'mobile', 'customer_phone']:
+        return "HIGH"
+    if 'address' in col_lower:
+        return "HIGH"
+    
+    # 2. Heuristic Value Scanning (Regex)
+    # Check up to 5 non-null samples
+    import re
+    for val in col_values:
+        val_str = str(val)
+        if re.search(r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$', val_str):
+            return "HIGH"
+        if re.search(r'^\+?[0-9\-\s\(\)]{7,15}$', val_str):
+            # Check length of actual digits
+            digits = re.sub(r'\D', '', val_str)
+            if 7 <= len(digits) <= 15:
+                return "HIGH"
+                
+    # 3. Local Presidio NLP Detection
+    if analyzer:
+        for val in col_values:
+            results = analyzer.analyze(text=str(val), entities=None, language='en')
+            if results:
+                best_entity = results[0].entity_type
+                if best_entity in ['PERSON', 'EMAIL_ADDRESS', 'PHONE_NUMBER', 'CREDIT_CARD', 'US_SSN', 'IP_ADDRESS']:
+                    return "HIGH"
+                elif best_entity in ['LOCATION', 'URL']:
+                    return "MEDIUM"
+                    
+    return None
+
 def run(state: AgentState) -> AgentState:
     state["current_node"] = "pii_detector"
     dataset     = state.get("dataset_name", "customers")
@@ -72,50 +112,14 @@ def run(state: AgentState) -> AgentState:
     try:
         # STEP 1, 2, & 3: Cascade execution per column
         for col, dtype in schema.items():
-            col_lower = col.lower()
-            classified = False
-            
-            # Step 1: Column Name Heuristics
-            if any(k in col_lower for k in ['email', 'ssn', 'password', 'name', 'phone']):
-                pii_map[col] = {"pii_level": "HIGH", "reason": "Column name heuristic (direct identifier)"}
-                classified = True
-            elif any(k in col_lower for k in ['id', 'zip', 'plate']):
-                pii_map[col] = {"pii_level": "MEDIUM", "reason": "Column name heuristic (indirect identifier)"}
-                classified = True
-                
-            if classified:
-                continue
+            # Extract sample values, drop nulls/empty strings
+            col_values = [str(r.get(col)).strip() for r in sample_rows if r.get(col) is not None and str(r.get(col)).strip() != ""]
+            col_values = col_values[:5]
 
-            # Check raw values for Regex/Presidio
-            col_values = [str(r.get(col, "")) for r in sample_rows if pd.notna(r.get(col, ""))]
-            
-            # Step 2: Local Regex Rules
-            email_regex = re.compile(r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$")
-            for val in col_values:
-                if email_regex.match(val):
-                    pii_map[col] = {"pii_level": "HIGH", "reason": "Regex match: Email"}
-                    classified = True
-                    break
-            
-            if classified:
-                continue
-                
-            # Step 3: Local Presidio NLP Detection
-            if analyzer:
-                for val in col_values:
-                    results = analyzer.analyze(text=val, entities=None, language='en')
-                    if results:
-                        best_entity = results[0].entity_type
-                        if best_entity in ['PERSON', 'EMAIL_ADDRESS', 'PHONE_NUMBER', 'CREDIT_CARD', 'US_SSN', 'IP_ADDRESS']:
-                            pii_map[col] = {"pii_level": "HIGH", "reason": f"Presidio NLP: {best_entity}"}
-                            classified = True
-                            break
-                        elif best_entity in ['LOCATION', 'URL']:
-                            pii_map[col] = {"pii_level": "MEDIUM", "reason": f"Presidio NLP: {best_entity}"}
-                            classified = True
-                            break
-
-            if not classified:
+            pii_level = detect_pii_local(col, col_values, analyzer)
+            if pii_level:
+                pii_map[col] = {"pii_level": pii_level, "reason": "Local NLP / Regex Cascade"}
+            else:
                 # Add to LLM fallback queue
                 unclassified_schema[col] = dtype
 
